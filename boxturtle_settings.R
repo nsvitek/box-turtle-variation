@@ -8,7 +8,7 @@ if(view=="dor"){
   m<-length(shape_cols)/2
   PCc<-5 # Number of PCs with repeatability > 0.9
   thresh<-0.07 #dorsal view
-  
+  r1<-0
   
 }
 if(view=="lat"){
@@ -19,6 +19,7 @@ if(view=="lat"){
   m<-length(shape_cols)/2
   PCc<-9 # Number of PCs with repeatability > 0.9
   thresh<-0.085 #lateral view
+  r1<-0
   #etc
 }
 if(view=="pos"){
@@ -29,7 +30,7 @@ if(view=="pos"){
   m<-length(shape_cols)/2
   PCc<-13 # Number of PCs with repeatability > 0.9
   thresh<-0.08 #posterior view
-  
+  r1<-180
   #etc
 }
 
@@ -56,14 +57,9 @@ if(length(which(is.na(shape[filterdim,1])))>=1){
 dim_set<-shape[filterdim,] %>% na.omit()
 dim_metadata<-droplevels(dim_metadata)
 
-#make binary coding based on geographic/ssp analysis
-binary_dim<-as.character(dim_metadata$ssp)
-binary_dim[which(binary_dim!="bauri")]<-"not"
-binary_dim<-as.factor(binary_dim)
-
 dim.gpa<-arrayspecs(dim_set,p=ncol(dim_set)/2,k=2) %>% gpagen
 dim.gdf<-geomorph.data.frame(dim.gpa,binary=binary_dim,
-                             sex=dim_metadata$sex)
+                             sex=dim_metadata$sex,ssp=dim_metadata$ssp)
 dim.gdf$Csize<-dim_metadata[,cs_metadata_col]
 
 # Subspecies: load --------------------------------------------------------------
@@ -79,13 +75,6 @@ if(length(which(is.na(shape[filterssp,1])))>=1){
 }
 ssp_set<-shape[filterssp,] %>% na.omit()
 
-#add in sex data from assessments, match by specimen number
-for (row_md in 1:nrow(ssp_metadata)){
-  row_sd<-which(as.character(ssp_sd_id$id)==as.character(ssp_metadata$id[row_md]))
-  ssp_metadata$sex[row_md]<-tolower(ssp_sd_id$assessex[row_sd])
-}
-
-
 ssp_all<-ssp_set #save for later
 ssp_all_metadata<-ssp_metadata #save for later
 binary_all<-as.character(ssp_all_metadata$ssp)
@@ -99,11 +88,6 @@ ssp_metadata<-ssp_metadata[-no.space,]
 ssp_metadata$latitude<-ssp_metadata$latitude %>% as.character %>% as.numeric #%>% cut(.,100)
 ssp_metadata$longitude<-ssp_metadata$longitude %>% as.character %>% as.numeric %>% abs(.) * -1
 
-# try a binary coding, based on a few fragments of info
-binary<-as.character(ssp_metadata$ssp)
-binary[which(binary!="bauri")]<-"not"
-binary<-as.factor(binary)
-
 # make geomorph object for ssp dataset
 ssp.gpa<-arrayspecs(ssp_set,p=ncol(ssp_set)/2,k=2) %>% gpagen
 ssp.gdf<-geomorph.data.frame(ssp.gpa,binary=binary,ssp=ssp_metadata$ssp,
@@ -111,6 +95,13 @@ ssp.gdf<-geomorph.data.frame(ssp.gpa,binary=binary,ssp=ssp_metadata$ssp,
                              longitude=ssp_metadata$longitude,
                              sex=ssp_metadata$sex)
 ssp.gdf$Csize<-ssp_metadata[,cs_metadata_col]
+# 
+# ssp.gpa2<-arrayspecs(ssp_set[which(ssp_metadata$ssp!="bauri"),],p=ncol(ssp_set)/2,k=2) %>% gpagen
+# ssp.gdf2<-geomorph.data.frame(ssp.gpa2,ssp=ssp_metadata$ssp[which(ssp_metadata$ssp!="bauri")],
+#                              latitude=ssp_metadata$latitude[which(ssp_metadata$ssp!="bauri")],
+#                              longitude=ssp_metadata$longitude[which(ssp_metadata$ssp!="bauri")],
+#                              sex=ssp_metadata$sex[which(ssp_metadata$ssp!="bauri")])
+# ssp.gdf2$Csize<-ssp_metadata[which(ssp_metadata$ssp!="bauri"),cs_metadata_col]
 
 # Fossils: load -------------------------------------------------------------
 #pull specimens meant for fossil analyses
@@ -158,3 +149,4 @@ fos_metadata$site2<-factor(as.character(fos_metadata$site2))
 # site_order<-group_by(fos_metadata,site2) %>% summarise(., mean(carapace_length)) #%>% arrange(.,`mean(carapace_length)`)
 # fos_metadata$site2<-factor(fos_metadata$site2,levels(fos_metadata$site2)[order(site_order$`mean(carapace_length)`)])
 # levels(fos_metadata$site2)
+

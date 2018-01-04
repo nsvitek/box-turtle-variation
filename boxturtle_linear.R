@@ -149,14 +149,7 @@ return(result)
 
 SDI_all<-calculate.SDI(male.length=mean(dim_metadata$carapace_length[which(dim_metadata$sex=="male")]),
                        female.length=mean(dim_metadata$carapace_length[which(dim_metadata$sex=="female")]))
-SDI_ssp<-rep(NA,2)
-names(SDI_ssp)<-levels(binary_dim)
-for (i in 1:length(levels(binary_dim))){
-  subdata<-dim_metadata[which(binary_dim==levels(binary_dim)[i]),]
-  SDI_ssp[i]<-calculate.SDI(male.length=mean(subdata$carapace_length[which(subdata$sex=="male")]),
-                            female.length=mean(subdata$carapace_length[which(subdata$sex=="female")]))
-}
-  
+
 # Use nonparametric modelling of confidence intervals to compare fossil sites.
 # Resampling 10 specimens seems appropriate
 # Create context by modelling confidence interval via resampling SD dataset
@@ -172,33 +165,33 @@ for (i in 1:replicates) {						# start a for loop
   distribution<- rbind(distribution,rdm)					# store all differences in means
 }									# end for loop
 
-# SSP: SDI ---------
-boxplot(log(ssp_metadata$carapace_length)~binary*ssp_metadata$sex,main="ln(Carapace Length)") #different ways of measuring size give diff results
-
-# # Calculate SDI for total dataset
-SDI_sspset_all<-calculate.SDI(male.length=mean(ssp_metadata$carapace_length[which(ssp_metadata$sex=="male")]),
-                              female.length=mean(ssp_metadata$carapace_length[which(ssp_metadata$sex=="female")]))
-SDI_sspset<-rep(NA,2)
-names(SDI_sspset)<-levels(binary_all)
-for (i in 1:length(levels(binary_all))){
-  subdata<-ssp_all_metadata[which(binary_dim==levels(binary_dim)[i]),]
-  SDI_sspset[i]<-calculate.SDI(male.length=mean(subdata$carapace_length[which(subdata$sex=="male")]),
-                                female.length=mean(subdata$carapace_length[which(subdata$sex=="female")]))
-}
-
-# # Model SDI confidence interval for the SSP dataset as well
-ssp_distribution<-NULL #create holder for null resampled distribution
-sample1<-ssp_metadata$carapace_length[which(ssp_metadata$sex=="male")]
-sample2<-ssp_metadata$carapace_length[which(ssp_metadata$sex=="female")]
-replicates<-10000
-for (i in 1:replicates) {						# start a for loop
-  rm1<- sample(sample1, size=5, replace=TRUE) %>% mean	# take first bootstrap sample from pooled data (n=n1)
-  rm2<- sample(sample2, size=5, replace=TRUE) %>% mean	# take second bootstrap sample from pooled data (n=n2)
-  rdm<- calculate.SDI(male.length=rm1,
-                      female.length=rm2)								# compute SDI for a given pair of bootstrap samples
-  ssp_distribution<- rbind(ssp_distribution,rdm)					# store all differences in means
-}									# end for-loop
-
+# # SSP: SDI ---------
+# boxplot(log(ssp_metadata$carapace_length)~binary*ssp_metadata$sex,main="ln(Carapace Length)") #different ways of measuring size give diff results
+# 
+# # # Calculate SDI for total dataset
+# SDI_sspset_all<-calculate.SDI(male.length=mean(ssp_metadata$carapace_length[which(ssp_metadata$sex=="male")]),
+#                               female.length=mean(ssp_metadata$carapace_length[which(ssp_metadata$sex=="female")]))
+# SDI_sspset<-rep(NA,2)
+# names(SDI_sspset)<-levels(binary_all)
+# for (i in 1:length(levels(binary_all))){
+#   subdata<-ssp_all_metadata[which(binary_dim==levels(binary_dim)[i]),]
+#   SDI_sspset[i]<-calculate.SDI(male.length=mean(subdata$carapace_length[which(subdata$sex=="male")]),
+#                                 female.length=mean(subdata$carapace_length[which(subdata$sex=="female")]))
+# }
+# 
+# # # Model SDI confidence interval for the SSP dataset as well
+# ssp_distribution<-NULL #create holder for null resampled distribution
+# sample1<-ssp_metadata$carapace_length[which(ssp_metadata$sex=="male")]
+# sample2<-ssp_metadata$carapace_length[which(ssp_metadata$sex=="female")]
+# replicates<-10000
+# for (i in 1:replicates) {						# start a for loop
+#   rm1<- sample(sample1, size=5, replace=TRUE) %>% mean	# take first bootstrap sample from pooled data (n=n1)
+#   rm2<- sample(sample2, size=5, replace=TRUE) %>% mean	# take second bootstrap sample from pooled data (n=n2)
+#   rdm<- calculate.SDI(male.length=rm1,
+#                       female.length=rm2)								# compute SDI for a given pair of bootstrap samples
+#   ssp_distribution<- rbind(ssp_distribution,rdm)					# store all differences in means
+# }									# end for-loop
+# 
 
 # F: SDI modelling ------
 # # Calculate SDI for the three sites with bimodal distributions
@@ -212,32 +205,24 @@ SDI_C<-1+(-1)*mean(fos_metadata$carapace_length[which(fos_metadata$site2=="camel
 # # Possible that these SDI values are just the result of sampling error?
 # # Test possibility using two models built above
 # # Make plot
-data<-data.frame(val=c(distribution,ssp_distribution),
-                 Dataset=c(rep("sex pre-identified",length(distribution)),rep("sex inferred",length(ssp_distribution))))
+# data<-data.frame(val=c(distribution,ssp_distribution),
+#                  Dataset=c(rep("sex pre-identified",length(distribution)),rep("sex inferred",length(ssp_distribution))))
+distribution<-as.data.frame(distribution)
+colnames(distribution)<-"val"
 
 cairo_pdf("SDI.pdf",width = 5.4, height = 4,family ="Arial")
-ggplot(data=data, aes(x=val)) +
-  geom_histogram(data=subset(data,Dataset=="sex pre-identified"),alpha=0.5, binwidth=.010,fill=spp_col[1],color="white") +
-  geom_histogram(data=subset(data,Dataset=="sex inferred"),alpha=0.5, binwidth=.010,fill=spp_col[2],color="white") +
+ggplot(data=distribution, aes(x=val)) +
+  geom_histogram(alpha=0.5, binwidth=.010,fill="black",color="white") +
   xlab("SDI") +
   geom_vline(xintercept=SDI_C,linetype=2,size=1)+
   geom_vline(xintercept=SDI_VM,linetype=3,size=1)+
   # geom_vline(xintercept=SDI_I,linetype=4,size=1)+
-  geom_vline(xintercept=SDI_all,color=spp_col[1],size=1)+
-  geom_vline(xintercept=SDI_sspset_all,color=spp_col[2],size=1)+
-  geom_vline(xintercept=SDI_ssp,color=spp_col[1],size=0.6,linetype=c(2,3))+
-  geom_vline(xintercept=SDI_sspset,color=spp_col[2],size=0.6,linetype=c(2,3))+
-  geom_text(data=data.frame(x=c(SDI_C+0.17,SDI_VM+0.17),y=c(350,400),site=c("Camelot","Vero-Melbourne")),
+  geom_vline(xintercept=SDI_all,color="black",size=1)+
+  geom_text(data=data.frame(x=c(SDI_C+0.17,SDI_VM+0.17),y=c(50,100),site=c("Camelot","Vero-Melbourne")),
                             aes(x=x,y=y,label=site))+
-  theme_classic() +
+  theme_classic() #+
   # theme(legend.position = c(0.5,0.5),legend.background=element_rect(fill="white"))+
-  scale_linetype_manual(values=c(2,2,3,3),labels=c("mainland",
-                                                   "peninsular",
-                                                   "mainland",
-                                                   "peninsular")) +
-  scale_color_manual(values=spp_col[c(1,2,1,2)])
-
-
+  # scale_color_manual(values=spp_col[c(1,2,1,2)])
 dev.off()
 embed_fonts("SDI.pdf")
 

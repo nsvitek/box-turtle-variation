@@ -280,7 +280,7 @@ which(is.na(Fixed_Missing))
 
 #Then, you will want to sort the rows back in their original order. 
 #You can't just use the sort function because it won't sort the numbers properly, 
-#so I'm going to it by hand here, because I'm too lazy to open excel. 18 August 2012: set up for dorsal view.
+#so I'm going to it by hand here. 18 August 2012: set up for dorsal view.
 row.names(Fixed_Missing)
 sortFM1<-Fixed_Missing[1:18,]
 sortFM2<-Fixed_Missing[19:28,]
@@ -311,7 +311,7 @@ for (i in 1:nrow(Fixed_Missing)){
 	j<-j+1
 }
 
-Back<-data.frame(matrix(unlist(NewTable),ncol=98,))
+Back<-data.frame(matrix(unlist(NewTable),ncol=98))
 Back2<-as.matrix(Back)
 dim(Back2)
 head(Back2)

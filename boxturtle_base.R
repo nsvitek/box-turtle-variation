@@ -5,11 +5,7 @@ scriptsdir <- "C://cygwin/home/N.S/scripts"
 datadir <- "C:/Users/N.S/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
 
 # Load Dependencies ------------------------------------------------------------------
-setwd(scriptsdir)
-source("boxturtle_utils.R")
-source("observer-free-morphotype-characterization/anderson.R")
-
-# load dependencies
+# load library dependencies
 library(dplyr)
 library(vegan)
 library(geomorph)
@@ -22,16 +18,17 @@ library(ggplot2)
 library(gridExtra) #for ggplot
 # install.packages("gridExtra")
 
+# load custom dependencies
 setwd(scriptsdir)
-source("observer-free-morphotype-characterization/anderson.R")
-source("observer-free-morphotype-characterization/figpiece3d.R")
-source("observer-free-morphotype-characterization/sensitivity_utils.R")
-source("observer-free-morphotype-characterization/find_repeatablePCs.R")
-source("boxturtle_utils.R")
+source("observer-free-morphotype-characterization/anderson.R") #code published with Vitek et al. 2017
+source("observer-free-morphotype-characterization/figpiece3d.R") #code published with Vitek et al. 2017
+source("observer-free-morphotype-characterization/sensitivity_utils.R") #code published with Vitek et al. 2017
+source("observer-free-morphotype-characterization/find_repeatablePCs.R") #code published with Vitek et al. 2017
+source("box-turtle-variation/boxturtle_utils.R")
 
-#plus Julien Claude's code and common slopes test:
+# load Julien Claude's code:
 source("Morphometrics_with_R.R")
-source("common.slope.test.R")
+# source("common.slope.test.R") #no longer necessary with revision
 
 #settings to get non-Helvetica fonts to work with ggplot 
 library(extrafont)
@@ -48,7 +45,7 @@ data_uni<-filter(data_all,err_rep==0) #get rid of error replicates
 metadata_columns<-c(1,58,147,214:231) #which columns in total dataset have metadata
 k<-2 #number of dimensions
 ssp_sd_id<-read.csv("ssp_sd_id.csv",header=TRUE) #sex assessments
-bp<-0.05/(choose(4,2)*3) #bonferroni-corrected p-value
+# bp<-0.05/(choose(4,2)*3) #bonferroni-corrected p-value
 opar<-par
 
 # Colors ----------------------------------------------------------------
@@ -60,8 +57,8 @@ oss_col<-c("#FFFAD2","#F9BD7E","#ED875E","#AE1C3E")
 
 # Set View --------------------------------------------------------------
 viewoptions<-c("dor","lat","pos")
-view<-viewoptions[3]
-source(paste(scriptsdir,"boxturtle_settings.R",sep="/"))
+view<-viewoptions[1]
+source(paste(scriptsdir,"box-turtle-variation/boxturtle_settings.R",sep="/"))
 
 # Error -------------------------------------------------------------------
 # ##### Evaluate human digitization error
@@ -98,6 +95,74 @@ binary_fssp<-c(binary,rep(3,nrow(fos_set)))
 #reorder sites alphabetically, modern at end.
 fssp_metadata$site2<-factor(as.character(fssp_metadata$site2))
 fssp_metadata$site2<-factor(fssp_metadata$site2,levels(fssp_metadata$site2)[c(1:9,11:12,10)])
+
+# disparity1 ----
+
+
+fssp.gpa<-arrayspecs(fssp_set,p=ncol(fssp_set)/2,k=2) %>% gpagen
+fssp.gdf<-geomorph.data.frame(fssp.gpa,dataset=fssp_metadata$fos_set)
+fssp.gdf$Csize<-fssp_metadata[,cs_metadata_col]
+test1<-morphol.disparity(coords~1, groups=NULL,data = fssp.gdf)
+test2<-morphol.disparity(coords~Csize, groups=~dataset,data = fssp.gdf) 
+all.val<-morphol.disparity(coords~Csize,data=fssp.gdf)
+mod.val<-morphol.disparity(coords~Csize,data=ssp.gdf)
+
+test2$Procrustes.var
+
+ssp.distribution2<-mod.val
+for (i in 1:replicates) {		# start for-loop
+  rando.gpa<-sample(c(1:nrow(ssp_set)),size=nrow(ssp_set), replace=TRUE) %>% ssp_set[.,] %>%
+    arrayspecs(.,p=ncol(ssp_set)/2,k=2) %>% gpagen #resample ssp specimens with replacement
+  rando.gdf<-geomorph.data.frame(rando.gpa)
+  rando.gdf$Csize<-ssp_metadata[,cs_metadata_col]
+  rm1<- morphol.disparity(coords~Csize,data=rando.gdf)  # calculate disparity for resamples
+  ssp.distribution2<- rbind(ssp.distribution,rm1)					# store all resampled disparities
+}									# end for-loop
+
+
+
+all.distribution<-all.val
+for (i in 1:replicates) {		# start for-loop
+  rando.gpa<-sample(c(1:nrow(fssp_set)),size=nrow(fssp_set), replace=TRUE) %>% fssp_set[.,] %>%
+    arrayspecs(.,p=ncol(fssp_set)/2,k=2) %>% gpagen #resample ssp specimens with replacement
+  rando.gdf<-geomorph.data.frame(rando.gpa)
+  rando.gdf$Csize<-fssp_metadata[,cs_metadata_col]
+  rm1<- morphol.disparity(coords~Csize,data=rando.gdf)  # calculate disparity for resamples
+  all.distribution<- rbind(all.distribution,rm1)					# store all resampled disparities
+}									# end for-loop
+
+small.distribution<-NA
+for (i in 1:(replicates+1)) {		# start for-loop
+  rando1<-sample(c(1:nrow(ssp_set)),size=(nrow(ssp_set)-nrow(fos_set)), replace=TRUE) 
+  rando.gpa<-ssp_set[rando1,] %>%
+    arrayspecs(.,p=ncol(ssp_set)/2,k=2) %>% gpagen #resample ssp specimens with replacement
+  rando.gdf<-geomorph.data.frame(rando.gpa)
+  rando.gdf$Csize<-ssp_metadata[rando1,cs_metadata_col]
+  rm1<- morphol.disparity(coords~Csize,data=rando.gdf)
+  small.distribution<-rbind(small.distribution,rm1)# calculate disparity for resamples
+}									# end for-loop
+
+big.distribution<-NA
+for (i in 1:(replicates+1)) {		# start for-loop
+  rando1<-sample(c(1:nrow(ssp_set)),size=(nrow(fssp_set)+nrow(fos_set)), replace=TRUE) 
+  rando.gpa<-ssp_set[rando1,] %>%
+    arrayspecs(.,p=ncol(ssp_set)/2,k=2) %>% gpagen #resample ssp specimens with replacement
+  rando.gdf<-geomorph.data.frame(rando.gpa)
+  rando.gdf$Csize<-ssp_metadata[rando1,cs_metadata_col]
+  rm1<- morphol.disparity(coords~Csize,data=rando.gdf)
+  big.distribution<-rbind(big.distribution,rm1)# calculate disparity for resamples
+}									# end for-loop
+
+
+
+abline(v=all.val)
+abline(v=mod.val)
+hist(all.distribution,col=rgb(1,0,0,.2))
+hist(big.distribution,col=rgb(0,1,1,.2),add=TRUE)
+hist(ssp.distribution,col=rgb(0,1,0,.2),add=TRUE)
+hist(small.distribution,col=rgb(0,0,1,.2),add=TRUE)
+
+t.test(all.distribution,ssp.distribution)
 
 # F+SSP: disparity ------
 # individual.disparity(PCAfssp$x[,c(1:7)]) #95% variance explained
@@ -247,8 +312,8 @@ ternary<-factor(ternary, levels=c("peninsular","mainland","neither"))
 cairo_pdf(paste("fos_binary_PCAv2_",view,".pdf",sep=""),width = 4.4, height = 4.4,family ="Arial")
 plot(PCAfssp$x[,1:2],pch=20+as.numeric(fssp_metadata$fos_set),bg=ssp_col[ternary],
      cex=log(fssp_metadata$carapace_length)/(mean(log(fssp_metadata$carapace_length))),xlab="",ylab="")
-mtext(paste("PC 1 (",round(an_fssp$percent[1],3),"%)",sep=""),side=1,line=3,cex=2)
-mtext(paste("PC 2 (",round(an_fssp$percent[2],3),"%)",sep=""),side=2,line=2,cex=2)
+mtext(paste("PC 1 (",round(an_fssp$percent[1],3),"%)",sep=""),side=1,line=3,cex=1.5)
+mtext(paste("PC 2 (",round(an_fssp$percent[2],3),"%)",sep=""),side=2,line=2,cex=1.5)
 dev.off()
 embed_fonts(paste("fos_binary_PCAv2_",view,".pdf",sep=""))
 
@@ -398,30 +463,6 @@ fos_metadata$site2
 # dev.off()
 
 # fos_metadata[,cs_metadata_col]/(min(fos_metadata[,cs_metadata_col]))
-# # F: bgPCA -----
-# #bgPCA
-# fos_residuals_mean<-colMeans(fos_set)#compute grand mean
-# fos_residuals_centered<-as.matrix(fos_set)-rep(1,nrow(fos_set))%*%t(fos_residuals_mean) #Subtract that grandmean from each row
-# 
-# #Calculate the group means
-# fos_means<-array(NA,dim=c(length(levels(fos_metadata$site2)),ncol(fos_set)))
-# for (i in 1:length(levels(fos_metadata$site2))){
-#   fos_means[i,]<-colMeans(fos_set[which(fos_metadata$site2==levels(fos_metadata$site2)[i]),])
-# }
-# B<-prcomp(fos_means)$rotation #eigenvectors
-# B2<-prcomp(fos_means)
-# 
-# bgPCAfos<-fos_residuals_centered%*%B #Get the scores for all the individuals on the eigenvectors of the PCA of the means
-# 
-# cairo_pdf(paste("fos_bgPCA_",view,".pdf",sep=""),width = 4.4, height = 4.4,family ="Arial")
-# par(mar=c(3.9,3.6,.5,.5))
-# plot(bgPCAfos[,c(1,2)],cex=1.5,
-#      bg=fos_col[fos_metadata$site2],pch=21,xlab="",ylab="")
-# mtext("bgPC 1",side=1,line=3,cex=2)
-# mtext("bgPC 2",side=2,line=2,cex=2)
-# # points(B2$x[,c(1,2)],cex=1.5,bg=fos_col,pch=22)
-# # legend('topleft',cex=.8,pch=c(21),pt.bg=fos_col,legend=levels(fos_metadata$site2),pt.cex=2)
-# dev.off()
 
 # # F: Haile -----
 # # are Auffenberg's two Haile types significantly different? No. p > 0.1 all cases. 
@@ -501,3 +542,218 @@ fos_metadata$site2
 # # ,as.phylo(clusterlat)
 # plot(test1) #there is no consensus except ardis+camelot, even when using only >0.85 clusters
 # 
+
+# F: k-means clustering or tree2 or who knows -------
+
+library(mclust)
+class<-as.character(fos_metadata$site2)
+X<-PCAfos$x[,1:PCc]
+X<-fos_set
+# clPairs(PCAssp$x[,1:PCc],class)
+BIC<-mclustBIC(X,G=1:5)
+plot(BIC)
+summary(BIC)
+mod1<-Mclust(X,x=BIC)
+# summary(mod1)
+table(class, mod1$classification)
+mod1dr<-MclustDR(mod1,normalized=FALSE)
+summary(mod1dr)
+# plot(mod1dr,what="pairs")
+plot(mod1dr, what = "boundaries", ngrid = 200)
+
+boxplot(fos_metadata$carapace_length~mod1$classification)
+
+#pool Holocene sites: by-site sample sizes too low
+site3<-fos_metadata$site2
+site3[which(site3=="vero"|site3=="devils den")]<-"holocene"
+site3<-droplevels(site3)
+site4<-site3
+levels(site4)<-c(levels(site3),"texas","florida")
+site4[which(site4=="friesenhahn cave"|site4=="ingleside")]<-"texas"
+site4[which(site4=="haile 8a"|site4=="reddick 1b")]<-"florida"
+site4<-droplevels(site4)
+site5<-site4
+site5[which(site5!="camelot2")]<-"holocene"
+site5<-droplevels(site5)
+
+fos.gpa<-arrayspecs(fos_set,p=ncol(fos_set)/2,k=2) %>% gpagen
+fos.gdf<-geomorph.data.frame(fos.gpa,site2=fos_metadata$site2,site3=site3,site4=site4,site5=site5)
+fos.gdf$Csize<-fos_metadata[,cs_metadata_col]
+
+# procD.lm(coords~log(Csize)+site4,RRPP=TRUE,iter=499,data=fos.gdf)
+# procD.lm(coords~log(Csize)+site5,RRPP=TRUE,iter=499,data=fos.gdf)
+test.maybe<-advanced.procD.lm(coords~log(Csize),~log(Csize)+site3,
+                  groups=~site3,slope=~log(Csize),iter=999,data=fos.gdf)
+summary(test.maybe)
+
+advanced.procD.lm(coords~log(Csize),~log(Csize)+site3,
+                  groups=~site3,slope=~log(Csize),iter=999,data=fos.gdf)
+
+advanced.procD.lm(coords~1,~site3,
+                  groups=~site3,iter=999,data=fos.gdf)
+
+#in lateral view Camelot2 is different if you take size into account, 
+#if you don't take size into account, large ones are sort of/mostly different from much smaller ones, esp. Melbourne
+#in posterior view, nothing is different with size into account, 
+#if you don't take size into account, similar pattern to lateral -- differences seem to scale by size
+#in dorsal view, with size, a random diff b/t ardis and camelot, ardis and haile, ardis and reddick
+#without size, camelot2/friesanhahn, camelot2/haile, holocene/friesenhahn, melbourne/friesenhahn, seems random.
+
+fssp.gpa<-arrayspecs(fssp_set,p=ncol(fssp_set)/2,k=2) %>% gpagen
+# fssp2.gdf<-geomorph.data.frame(fssp.gpa,site=c(as.character(site5),rep("holocene",nrow(ssp_metadata))))
+# fssp2.gdf<-geomorph.data.frame(fssp.gpa,site=c(as.character(site3),as.character(ssp_metadata$site)))
+fssp2.gdf<-geomorph.data.frame(fssp.gpa,fossil=fssp_metadata$fos_set)
+fssp2.gdf$Csize<-fssp_metadata[,cs_metadata_col]
+
+#do two groups have difference in allometric slopes?
+advanced.procD.lm(coords~log(Csize)+fossil,~log(Csize)*fossil,
+                  groups=~fossil,slope=~log(Csize),angle.type="deg",iter=499,data=fssp2.gdf) 
+#posterior: yes, both slopes and lengths; lateral: yes, slopes are different (vector lengths at 0.08)
+#dorsal, yes, groups and slopes are different.
+
+advanced.procD.lm(coords~log(Csize),~log(Csize)+fossil,
+                  groups=~fossil,slope=~log(Csize),angle.type="deg",iter=499,data=fssp2.gdf) 
+
+
+advanced.procD.lm(coords~log(Csize),~log(Csize)+site,
+                  groups=~site,slope=~log(Csize),iter=499,data=fssp2.gdf) 
+procD.lm(coords~log(Csize),RRPP=TRUE,iter=499,data=fssp2.gdf)
+
+advanced.procD.lm(coords~1,~site,
+                  groups=~site,iter=499,data=fssp2.gdf) 
+
+
+# F: bgPCA -----
+#bgPCA
+fos_residuals_mean<-colMeans(fos_set)#compute grand mean
+fos_residuals_centered<-as.matrix(fos_set)-rep(1,nrow(fos_set))%*%t(fos_residuals_mean) #Subtract that grandmean from each row
+
+#Calculate the group means
+fos_means<-array(NA,dim=c(length(levels(site8)),ncol(fos_set)))
+for (i in 1:length(levels(site8))){
+  fos_means[i,]<-colMeans(fos_set[which(site8==levels(site8)[i]),])
+}
+B<-prcomp(fos_means)$rotation #eigenvectors
+B2<-prcomp(fos_means)
+
+bgPCAfos<-fos_residuals_centered%*%B #Get the scores for all the individuals on the eigenvectors of the PCA of the means
+
+# cairo_pdf(paste("fos_bgPCA_",view,".pdf",sep=""),width = 4.4, height = 4.4,family ="Arial")
+# par(mar=c(3.9,3.6,.5,.5))
+plot(bgPCAfos[,c(1,2)],cex=1.5,
+     bg=fos_col[site8],pch=21,xlab="",ylab="")
+# mtext("bgPC 1",side=1,line=3,cex=2)
+# mtext("bgPC 2",side=2,line=2,cex=2)
+# points(B2$x[,c(1,2)],cex=1.5,bg=fos_col,pch=22)
+legend('topleft',cex=.8,pch=c(21),pt.bg=fos_col,legend=levels(site3),pt.cex=2)
+# dev.off()
+plot(PCAfos$x[,c(1,2)],cex=1.5,
+     bg=fos_col[site7],pch=21,
+     xlab="",ylab="")
+
+
+
+#bgPCA
+fos_set2<-fssp_set
+fos_residuals_mean<-colMeans(fos_set2)#compute grand mean
+fos_residuals_centered<-as.matrix(fos_set2)-rep(1,nrow(fos_set2))%*%t(fos_residuals_mean) #Subtract that grandmean from each row
+
+#Calculate the group means
+site5.1<-c(as.character(site8),rep("texas",nrow(ssp_metadata))) %>% factor
+fos_means<-array(NA,dim=c(length(levels(site5.1)),ncol(fos_set2)))
+for (i in 1:length(levels(site5.1))){
+  fos_means[i,]<-colMeans(fos_set2[which(site5.1==levels(site5.1)[i]),])
+}
+B<-prcomp(fos_means)$rotation #eigenvectors
+B2<-prcomp(fos_means)
+
+bgPCAfos<-fos_residuals_centered%*%B #Get the scores for all the individuals on the eigenvectors of the PCA of the means
+
+# cairo_pdf(paste("fos_bgPCA_",view,".pdf",sep=""),width = 4.4, height = 4.4,family ="Arial")
+# par(mar=c(3.9,3.6,.5,.5))
+plot(bgPCAfos[,c(1,2)],cex=1.5,
+     bg=fos_col[site5.1],pch=21,xlab="",ylab="")
+# mtext("bgPC 1",side=1,line=3,cex=2)
+# mtext("bgPC 2",side=2,line=2,cex=2)
+# points(B2$x[,c(1,2)],cex=1.5,bg=fos_col,pch=22)
+legend('topleft',cex=.8,pch=c(21),pt.bg=fos_col,legend=levels(site5.1),pt.cex=2)
+fssp_metadata$ssp
+
+# F: allometry again ------
+# build allometric linear model for modern specimens to apply to fossil record
+
+model<-lm(as.matrix(ssp_set[,])~log(ssp_metadata[,cs_metadata_col])) #allometric model with CS
+  # model<-lm(as.matrix(ssp_all[,])~log(ssp_all_metadata$carapace_length[])) #allometric model with CL
+modm<-matrix(model$coefficients[2,],m,k,byrow=TRUE) #m in the linear model y=mx+b
+residuals<-model$residuals
+modb<-matrix(model$coefficients[1,],m,k,byrow=TRUE) #b in the linear model y=mx+b
+
+#when you remove predicted shape, what you are left are the residuals, yes?
+testa<-function(x){modm*x+modb} #make modern linear model
+
+# testa(log(ssp_metadata[,cs_metadata_col][188])) %>% plot(.,asp=1) #check
+
+
+# "correct" for modern allometric predictions
+#test
+lcs<-log(fos_metadata[,cs_metadata_col])
+predicted.shape<-array(NA,dim=c(m,k,nrow(fos_set)))
+for(i in 1:nrow(fos_set)){predicted.shape[,,i]<-testa(lcs[i])}
+residual.shape<-arrayspecs(fos_set,m,k)-predicted.shape
+mean.shape<-colMeans(fos_set)%>% matrix(.,m,k,byrow=TRUE) %>% array(.,dim=c(m,k,nrow(fos_set)))
+remaining.shape<-(mean.shape+residual.shape)
+
+#test
+fos_metadata[which(fos_metadata$site=="melbourne"),cs_metadata_col] %>% log
+testa(6.6) %>% plot(.,asp=1) #check
+points(matrix(fos_set[38,],nrow=m,ncol=k,byrow=TRUE),col="red")
+points(remaining.shape[,,38],col="blue") #these three shapes should make sense. Do they?
+
+
+# PCAfos.allo<-prcomp(two.d.array(remaining.shape),scale.=FALSE)
+PCAfos.allo<-prcomp(two.d.array(remaining.shape),scale.=FALSE)
+an_fos.allo<-anderson(PCAfos.allo$sdev)
+plot(PCAfos.allo$x[,1:2],bg=c(fos_col[1:11],"white")[fos_metadata$site2],pch=21,cex=2)
+# text(PCAfos.allo$x[,1],PCAfos.allo$x[,2],c(1:nrow(fos_set)))
+legend('topright',cex=.7,pch=c(21),pt.bg=fos_col,legend=levels(fos_metadata$site2),pt.cex=2)
+
+
+#is this appropriate?
+fos.gpa<-remaining.shape %>% gpagen
+fos.gdf<-geomorph.data.frame(fos.gpa,site2=fos_metadata$site2,site3=site3,site4=site4,site5=site5)
+fos.gdf$Csize<-fos_metadata[,cs_metadata_col]
+advanced.procD.lm(coords~1,~site3,groups=~site3,iter=999,data=fos.gdf)
+
+# modern allometry experiment -----
+# "correct" for modern allometric predictions
+#test
+lcs<-log(fssp_metadata[,cs_metadata_col])
+predicted.shape<-array(NA,dim=c(m,k,nrow(fssp_set)))
+for(i in 1:nrow(fssp_set)){predicted.shape[,,i]<-testa(lcs[i])}
+residual.shape<-arrayspecs(fssp_set,m,k)-predicted.shape
+mean.shape<-colMeans(fssp_set)%>% matrix(.,m,k,byrow=TRUE) %>% array(.,dim=c(m,k,nrow(fssp_set)))
+remaining.shape<-(mean.shape+residual.shape)
+
+#test
+fssp_metadata[which(fssp_metadata$site=="melbourne"),cs_metadata_col] %>% log
+testa(6.9) %>% plot(.,asp=1) #check
+points(matrix(fssp_set[237,],nrow=m,ncol=k,byrow=TRUE),col="red")
+points(remaining.shape[,,237],col="blue") #these three shapes should make sense. Do they?
+
+
+# PCAfos.allo<-prcomp(two.d.array(remaining.shape),scale.=FALSE)
+PCAfssp.allo<-prcomp(two.d.array(remaining.shape),scale.=FALSE)
+an_fssp.allo<-anderson(PCAfssp.allo$sdev)
+plot(PCAfssp.allo$x[,1:2],bg=c(fos_col[1:11],"white")[fssp_metadata$site2],pch=21,
+     cex=(fssp_metadata[,cs_metadata_col]/1000)*3)
+# text(PCAfos.allo$x[,1],PCAfos.allo$x[,2],c(1:nrow(fos_set)))
+legend('bottomleft',cex=.7,pch=c(21),pt.bg=fos_col,legend=levels(fssp_metadata$site2),pt.cex=2)
+
+
+#is this appropriate?
+fssp.gpa<-remaining.shape %>% gpagen
+fssp.gdf<-geomorph.data.frame(fssp.gpa,site2=fssp_metadata$site2,fossil=fssp_metadata$fos_set,
+                              site3=c(rep("modern",nrow(ssp_set)),as.character(site3)))
+# fos.gdf$Csize<-fos_metadata[,cs_metadata_col]
+advanced.procD.lm(coords~1,~site2,groups=~site2,iter=999,data=fssp.gdf)
+

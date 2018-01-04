@@ -65,10 +65,17 @@ arrows(mean(unlist(errdist)),1000,mean(unlist(errdist)),50,length=0.1, col="red"
 points(mean(unlist(errdist)),1000,cex=1, pch=16, col="red")
 dev.off()
 
-# Fruciano -----------
+# Fruciano & Yezerinac -----------
 testgdf<-geomorph.data.frame(coords=PCA$x,specimen=data_all$id)
 errorANOVA<-procD.lm(coords~factor(specimen),data=testgdf,iter=999,RRPP=TRUE) %>% .$aov.table
 repeatability<-((errorANOVA$MS[1]-errorANOVA$MS[2])/2.2)/(errorANOVA$MS[2]+((errorANOVA$MS[1]-errorANOVA$MS[2])/2.2))
+
+# Yezerinac et al. 1992 p. 474
+# among-individual component of variation 
+s.among<-(errorANOVA$MS[1]-errorANOVA$MS[2])/2.2
+# the within-individual component of variation (ibid.) is the MS-within, or errorANOVA$MS[2]
+# therefore Yezerinac et al. 1992 % measurement error calculated as follows:
+(errorANOVA$MS[2]/(errorANOVA$MS[2]+s.among))*100
 
 jpeg(filename=paste("error_",view,"_pca.jpg",sep=""))
 plot(PCA$x[,1:2],bg=c("black","red")[data_all$err_rep+1],pch=21)

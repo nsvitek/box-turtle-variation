@@ -92,31 +92,20 @@ embed_fonts(paste("sd_PCA_",view,".pdf",sep=""))
 
 # SD: statistics -----
 #statistics: after accounting for size and geographic groups, is there sexual dimorphism?
-nMAN<-adonis(PCAdim$x[,c(1:PCc)]~log(dim_metadata[,cs_metadata_col])*
-               # binary_dim*
-               dim_metadata$sex, permutations=1000, method="euclidean")
-for(i in 1:nrow(nMAN$aov.tab)){nMAN$aov.tab[i,6]<-p.adjust(nMAN$aov.tab[i,6], method = "BH", n = 3)} #correct for multiple tests, this time for 3 views
 
-write.csv(nMAN$aov.tab[,c(1,4,5,6)],paste("sd_npMANOVA_dimset_",view,".csv",sep=""))
+#check, interaction beween the two covariates? Answer: No. 
+advanced.procD.lm(coords ~ log(Csize) + ssp, ~log(Csize) * ssp,
+               groups=~ssp,slope=~log(Csize),iter = 999, data = dim.gdf) #report R^2,F,p, df
 
-pMAN<-procD.lm(coords ~ log(Csize)  * sex, #* binary
-               iter = 999, data = dim.gdf) #report R^2,F,p, df
+#no interactions here.
+advanced.procD.lm(coords ~ (log(Csize) + ssp) + sex, ~(log(Csize) + ssp) * sex,
+                  groups=~sex,slope=~log(Csize),iter = 999, data = dim.gdf) #report R^2,F,p, df
+
+
+pMAN<-procD.lm(coords ~ (log(Csize) + ssp) * sex,iter = 999, data = dim.gdf)
+
 for(i in 1:nrow(pMAN$aov.tab)){pMAN$aov.tab[i,7]<-p.adjust(pMAN$aov.tab[i,7], method = "BH", n = 3)} #correct for multiple tests, this time for 3 views
 write.csv(pMAN$aov.table[,c(1,4,5,7)],paste("sd_procMANOVA_dimset_",view,".csv",sep=""))
-
-#statistics: again with larger dataset
-nMAN<-adonis(PCAssp$x[,c(1:PCc)]~log(ssp_metadata[,cs_metadata_col])*
-               # binary*
-               ssp_metadata$sex, permutations=1000, method="euclidean")
-for(i in 1:nrow(nMAN$aov.tab)){nMAN$aov.tab[i,6]<-p.adjust(nMAN$aov.tab[i,6], method = "BH", n = 3)} #correct for multiple tests, this time for 3 views
-
-write.csv(nMAN$aov.tab[,c(1,4,5,6)],paste("sd_npMANOVA_sspset_",view,".csv",sep=""))
-
-pMAN<-procD.lm(coords ~ log(Csize)  * sex, #* binary
-               iter = 999, data = ssp.gdf) #report R^2,F,p, df
-for(i in 1:nrow(pMAN$aov.tab)){pMAN$aov.tab[i,7]<-p.adjust(pMAN$aov.tab[i,7], method = "BH", n = 3)} #correct for multiple tests, this time for 3 views
-
-write.csv(pMAN$aov.table[,c(1,4,5,7)],paste("sd_procMANOVA_sspset_",view,".csv",sep=""))
 
 # SD: CVA -----
 # # Use CVAGen8 for CVA-based assignments tests with jackknife
@@ -147,23 +136,37 @@ sd_female2<-dim_set[which(dim_metadata$sex=="female"),] %>%
 
 #calculate x and y limits
 #plot the two mean species shape with standard deviation
-pdf(paste("sd_outline_",view,".pdf",sep=""),width = 4.4, height = 4.4,useDingbats=FALSE)
-par(mar=c(.5,.5,.5,.5))
-xlims<-c(min(c(female_mshp$meanshape[,1]-sd_female2[,1],male_mshp$meanshape[,1]-sd_male2[,1])),
-         max(c(female_mshp$meanshape[,1]+sd_female2[,1],male_mshp$meanshape[,1]+sd_male2[,1])))
-ylims<-c(min(c(female_mshp$meanshape[,2]-sd_female2[,2],male_mshp$meanshape[,2]-sd_male2[,2])),
-         max(c(female_mshp$meanshape[,2]+sd_female2[,2],male_mshp$meanshape[,2]+sd_male2[,2])))
-plot(male_mshp$meanshape,asp=1,pch=21,bg=spp_col[1],axes=FALSE,xlab="",ylab="",
-     xlim=xlims, ylim=ylims,cex=0.5,type="n")
-plot.errell(male_mshp$meanshape,sd_male2,color.bg=spp_col[1],alpha.bg=0.5)
-plot.errell(female_mshp$meanshape,sd_female2,color.bg=spp_col[2],alpha.bg=0.5)
-points(male_mshp$meanshape,asp=1,pch=21,bg=spp_col[1],cex=0.6)
-points(female_mshp$meanshape,asp=1,pch=22,bg=spp_col[2],cex=0.6)
-# title("SD, solid = allometrically corrected, red=female")
+# pdf(paste("sd_outline_",view,".pdf",sep=""),width = 4.4, height = 4.4,useDingbats=FALSE)
+# par(mar=c(.5,.5,.5,.5))
+# xlims<-c(min(c(female_mshp$meanshape[,1]-sd_female2[,1],male_mshp$meanshape[,1]-sd_male2[,1])),
+#          max(c(female_mshp$meanshape[,1]+sd_female2[,1],male_mshp$meanshape[,1]+sd_male2[,1])))
+# ylims<-c(min(c(female_mshp$meanshape[,2]-sd_female2[,2],male_mshp$meanshape[,2]-sd_male2[,2])),
+#          max(c(female_mshp$meanshape[,2]+sd_female2[,2],male_mshp$meanshape[,2]+sd_male2[,2])))
+# plot(male_mshp$meanshape,asp=1,pch=21,bg=spp_col[1],axes=FALSE,xlab="",ylab="",
+#      xlim=xlims, ylim=ylims,cex=0.5,type="n")
+# plot.errell(male_mshp$meanshape,sd_male2,color.bg=spp_col[1],alpha.bg=0.5)
+# plot.errell(female_mshp$meanshape,sd_female2,color.bg=spp_col[2],alpha.bg=0.5)
+# points(male_mshp$meanshape,asp=1,pch=21,bg=spp_col[1],cex=0.6)
+# points(female_mshp$meanshape,asp=1,pch=22,bg=spp_col[2],cex=0.6)
+# # title("SD, solid = allometrically corrected, red=female")
+# dev.off()
+
+# cairo_pdf("sd_shape_legend.pdf",width = 3.6, height = 3.6,family ="Arial") #make legend
+# plot(male_mshp$meanshape,type="n",axes=F,xlab="",ylab="")
+# legend('center',cex=2,pch=c(21,22),pt.cex=3,pt.bg=spp_col,legend=rev(levels(dim_metadata$sex)))
+# dev.off()
+# embed_fonts("sd_shape_legend.pdf")
+
+# plot the way reviewer #2 prefers:
+female_mshp_r<-rotateAMatrix(female_mshp$meanshape,r1,0,0)
+male_mshp_r<-rotateAMatrix(male_mshp$meanshape,r1,0,0)
+
+pdf(paste("sd_wireframe_male",view,".pdf",sep=""),width = 4.4, height = 4.4,useDingbats=FALSE)
+par(mar=c(.01,.01,.01,.01))
+plotRefToTarget(female_mshp_r,male_mshp_r,method="TPS",gridPars=gridPar(tar.pt.size=.5,grid.lwd=0.8))
 dev.off()
 
-cairo_pdf("sd_shape_legend.pdf",width = 3.6, height = 3.6,family ="Arial") #make legend
-plot(male_mshp$meanshape,type="n",axes=F,xlab="",ylab="")
-legend('center',cex=2,pch=c(21,22),pt.cex=3,pt.bg=spp_col,legend=rev(levels(dim_metadata$sex)))
+pdf(paste("sd_wireframe_female",view,".pdf",sep=""),width = 4.4, height = 4.4,useDingbats=FALSE)
+par(mar=c(.01,.01,.01,.01))
+plotRefToTarget(male_mshp_r,female_mshp_r,method="TPS",gridPars=gridPar(tar.pt.size=.5,grid.lwd=0.8))
 dev.off()
-embed_fonts("sd_shape_legend.pdf")

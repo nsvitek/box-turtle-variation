@@ -50,23 +50,15 @@ mshp<-function(x,m=2){
   return(result)
 }
 
-# #function to plot shape, with or without standard deviation
-# # shapenames = vector of shapes. Or list of shapes?
-# function(shapes,colors,plot.bubbles=TRUE){
-#   xlims<-range(shapes) %>% +c(-0.015,0.015)
-#   ylims<-range(shapes) %>% +c(-0.015,0.015)
-#   plot(shapes[[1]],asp=1,pch=21,bg=colors[1],axes=FALSE,xlab="",ylab="",
-#      xlim=xlims, ylim=ylims,cex=0.5)
-#   for (i in 1:length(shapes)){ ####NEEDS TO CREATE OBJECTS THAT WON'T BE OVERRITTEN
-#     rgbcol<-rgb(t(col2rgb(colors[1])/255),alpha=.5)
-#     rgbbor<-rgb(t(col2rgb(colors[1])/255),alpha=.1)
-#     eb_car<-errbubble(x=carolina_mshp$meanshape[,1],y=carolina_mshp$meanshape[,2],sd_carolina)
-#   }
-# rgbcol<-rgb(t(col2rgb(colors[2])/255),alpha=.5)
-# rgbbor<-rgb(t(col2rgb(colors[2])/255),alpha=.1)
-# eb_coa<-errbubble(x=coahuila_mshp$meanshape[,1],y=coahuila_mshp$meanshape[,2],sd_coahuila)
-# lines(carolina_mshp$meanshape[conx,],col=spp_col[1],lwd=2)
-# lines(coahuila_mshp$meanshape[conx,],col=spp_col[2],lwd=2)
-# points(carolina_mshp$meanshape,asp=1,pch=21,bg=spp_col[1],cex=0.5)
-# points(coahuila_mshp$meanshape,asp=1,pch=21,bg=spp_col[2],cex=0.5)
-# }
+#Adam Rountrey's rotateAMatrix function, from UC Berkeley's Morphometrics Short Course
+rotateAMatrix = function(mat,degrees,rotCenX,rotCenY){
+  radns = degrees/360*2*pi
+  rotmat = matrix(c(cos(radns),sin(radns),-sin(radns),cos(radns)),2,2)
+  tempmat = matrix(NA,dim(mat)[1],dim(mat)[2])
+  tempmat[,1] = mat[,1] - rotCenX
+  tempmat[,2] = mat[,2] - rotCenY
+  tempmat = as.matrix(tempmat)%*%rotmat
+  tempmat[,1] = tempmat[,1] + rotCenX
+  tempmat[,2] = tempmat[,2] + rotCenY
+  tempmat
+}
