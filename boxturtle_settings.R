@@ -58,7 +58,7 @@ dim_set<-shape[filterdim,] %>% na.omit()
 dim_metadata<-droplevels(dim_metadata)
 
 dim.gpa<-arrayspecs(dim_set,p=ncol(dim_set)/2,k=2) %>% gpagen
-dim.gdf<-geomorph.data.frame(dim.gpa,binary=binary_dim,
+dim.gdf<-geomorph.data.frame(dim.gpa,
                              sex=dim_metadata$sex,ssp=dim_metadata$ssp)
 dim.gdf$Csize<-dim_metadata[,cs_metadata_col]
 
@@ -77,9 +77,6 @@ ssp_set<-shape[filterssp,] %>% na.omit()
 
 ssp_all<-ssp_set #save for later
 ssp_all_metadata<-ssp_metadata #save for later
-binary_all<-as.character(ssp_all_metadata$ssp)
-binary_all[which(binary_all!="bauri")]<-"not"
-binary_all<-as.factor(binary_all)
 
 #use only specimens with spatial data (latitude & longitude), can change back later
 no.space<-which(is.na(ssp_metadata$latitude))
@@ -90,7 +87,7 @@ ssp_metadata$longitude<-ssp_metadata$longitude %>% as.character %>% as.numeric %
 
 # make geomorph object for ssp dataset
 ssp.gpa<-arrayspecs(ssp_set,p=ncol(ssp_set)/2,k=2) %>% gpagen
-ssp.gdf<-geomorph.data.frame(ssp.gpa,binary=binary,ssp=ssp_metadata$ssp,
+ssp.gdf<-geomorph.data.frame(ssp.gpa,ssp=ssp_metadata$ssp,
                              latitude=ssp_metadata$latitude,
                              longitude=ssp_metadata$longitude,
                              sex=ssp_metadata$sex)

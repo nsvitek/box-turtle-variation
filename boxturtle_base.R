@@ -1,8 +1,8 @@
 # Base script to pull together geometric morphometric analyses of Terrapene spp.
 
 scriptsdir <- "C://cygwin/home/N.S/scripts"
-# datadir <- "D:/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
-datadir <- "C:/Users/N.S/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
+datadir <- "D:/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
+# datadir <- "C:/Users/N.S/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
 
 # Load Dependencies ------------------------------------------------------------------
 # load library dependencies
@@ -12,11 +12,20 @@ library(geomorph)
 library(adegenet) #for Monmonier
 library(wesanderson) #for colors
 library(RColorBrewer) #for colors
-# library(scales) #for emulating ggplot colors
 library(plotrix) #for draw.ellipse()
 library(ggplot2)
 library(gridExtra) #for ggplot
-# install.packages("gridExtra")
+library(mclust) #k-means clustering
+library(sp) #making spatial object, coords()
+library(spdep) #neighbors, all the x2y functions
+library(geosphere) #distm
+library(packfor) #forward selection with multivariate response
+library(maps)
+library(ggrepel)
+library(ggmap)
+library(scales) #needed to make reverse log-10 y axis, as solved by stackexchange Brian Diggs
+# install.packages("packfor", repos="http://R-Forge.R-project.org")
+# install.packages("mclust")
 
 # load custom dependencies
 setwd(scriptsdir)
@@ -49,11 +58,11 @@ ssp_sd_id<-read.csv("ssp_sd_id.csv",header=TRUE) #sex assessments
 opar<-par
 
 # Colors ----------------------------------------------------------------
-spp_col<-wes_palette("Moonrise2")
+# spp_col<-wes_palette("Moonrise2")
 fos_col<-c(brewer.pal(12,"Paired"),"white")
 ssp_col<-brewer.pal(8,"Accent") %>% rev()
-view_col<-wes_palette("Darjeeling")
-oss_col<-c("#FFFAD2","#F9BD7E","#ED875E","#AE1C3E")
+# view_col<-wes_palette("Darjeeling")
+oss_col<-c("#FFFAD2","#F9BD7E","#ED875E","#AE1C3E") #are these tol colors?
 
 # Set View --------------------------------------------------------------
 viewoptions<-c("dor","lat","pos")
