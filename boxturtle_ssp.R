@@ -281,12 +281,13 @@ embed_fonts("ssp_size.pdf")
 # SSP: Bayesian Clustering? -------
 classifier<-as.character(ssp_metadata$ssp)
 cluster.data<-PCAssp$x[,1:PCc]
-BIC<-mclustBIC(cluster.data,G=1:4)
+mc<-4
+BIC<-mclustBIC(cluster.data,G=1:mc)
 plot(BIC)
 one.cluster<-max(BIC[1,])
 more.clusters<-max(BIC[c(2:4),],na.rm=TRUE) #BIC score of best model with more than one cluster
 how.much<-one.cluster-more.clusters
-best.k<-floor(which(BIC==max(BIC,na.rm=TRUE)) /4 ) #4 used because up to 4 clusters tested
+best.k<-((which(BIC==max(BIC,na.rm=TRUE)) /mc)-floor((which(BIC==max(BIC,na.rm=TRUE)) /mc)))*mc
 kmeans.report<-rbind(one.cluster,more.clusters,how.much,best.k)
 row.names(kmeans.report)<-c("BIC.best.one.cluster",
                             "BIC.best.multiple.clusters",
