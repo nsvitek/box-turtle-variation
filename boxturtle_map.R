@@ -11,10 +11,12 @@ reverselog_trans <- function(base = exp(1)) {
 }
 
 # make map --------
-
 localities_fossil<-fos_metadata %>% select(.,latitude,longitude,site) %>% unique
 localities_ssp<-ssp_metadata %>% select(.,latitude,longitude,sex,ssp,subspecies) %>% unique
 localities_sex<-dim_metadata %>% select(.,latitude,longitude,sex,ssp,id) %>% unique
+#make it okay to not know sex of turtle
+levels(localities_ssp$sex)<-c(levels(localities_ssp$sex),"unknown")
+localities_ssp$sex[which(is.na(localities_ssp$sex))]<-"unknown"
 
 usa<-map_data('state')
 ylims<-range(localities_ssp$latitude)+c(-0.8,+0.8)
@@ -39,15 +41,35 @@ ggplot(data=localities_ssp,aes(x=longitude,y=latitude))+
   geom_point(data=localities_fossil,color="black",size=2,shape=3)+
   # geom_label_repel(data=localities_fossil,aes(x=longitude,y=latitude,label=site),size=3,
   #                  box.padding=unit(0.45,"lines"),label.padding=unit(0.05,"lines"))+
-  # scale_shape_manual(values=c(15,16),name="Sex",
+  # scale_shape_manual(values=c(15,16,17),name="Sex",
   #                    labels=c("female","male"))  +
   # scale_color_manual(values= ssp_col,name="Subspecies",
   #                   labels=c("T. c. bauri","T. c. carolina","T. c. major","T. c. triunguis"))
   scale_color_manual(values= ssp_col,guide=FALSE) +
-  scale_shape_manual(values=c(15,16),guide=FALSE)
+  scale_shape_manual(values=c(15,16,17),guide=FALSE)
 dev.off()
 embed_fonts("map2.pdf")
 
+cairo_pdf("map.pdf",width = 5.4, height = 4.4,family ="Arial",bg="transparent")
+ggplot(data=localities_ssp,aes(x=longitude,y=latitude))+
+  # geom_polygon(data=usa,aes(x=long,y=lat,group=group),fill=NA,color="gray") +
+  coord_cartesian(xlim=xlims,ylim=ylims)+
+  theme_classic() +
+  theme(axis.line=element_blank(),axis.text.x=element_blank(),
+        axis.text.y=element_blank(),axis.ticks=element_blank(),
+        axis.title.x=element_blank(),axis.title.y=element_blank(),
+        legend.position=c(0.9,0.3),text=element_text(size=10),
+        panel.background = element_rect(fill = "transparent",colour = NA), # or theme_blank()
+        panel.grid.minor = element_blank(), 
+        panel.grid.major = element_blank(),
+        plot.background = element_rect(fill = "transparent",colour = NA))+
+  geom_point(aes(color=ssp,shape=sex),size=2)+
+  geom_point(data=localities_sex,aes(color=ssp,shape=sex),size=2)+
+  # geom_point(data=localities_fossil,color="black",size=2,shape=3)+
+  scale_color_manual(values= ssp_col) +
+  scale_shape_manual(values=c(15,16,17))
+dev.off()
+embed_fonts("map.pdf")
 
 
 # make stratigraphic chart -----

@@ -97,25 +97,6 @@ which(age_measures$MGR<=7&
 which(age_measures$CL>=99&
         age_measures$Ossification_score<=1) %>% length
 
-# F: size histogram ------
-#make the histogram. first, combine subspecies and fossil datasets
-hist_metadata<-ssp_metadata
-hist_metadata$site2<-hist_metadata$site
-hist_metadata<-rbind(hist_metadata,fos_metadata)
-hist_metadata$site2<-factor(as.character(hist_metadata$site2))
-
-# plot carapace length distribution of fossils compared to modern sample
-plotfossize<-ggplot(data=hist_metadata, aes(x=carapace_length,fill=site2)) +
-  geom_histogram(data=subset(hist_metadata, !(site2 %in% "modern")),binwidth=10) +
-  geom_histogram(data=subset(hist_metadata, site2 %in% "modern"),alpha=0.3, binwidth=10,fill=NA,color="black") +
-  scale_fill_manual(name="Site",values=fos_col) +
-  xlab("Carapace Length") +
-  theme_classic() +
-  theme(legend.position = c(0.8,0.55),legend.background=element_rect(fill="white"))
-ggsave("CL_fos-vs-mod.pdf",plot=plotfossize, width = 5.4, height = 4, units = "in",family="ArialMT")
-embed_fonts("CL_fos-vs-mod.pdf") 
-ggsave("CL_fos-vs-mod.eps",plot=plotfossize, width = 5.4, height = 4, units = "in",family="ArialMT")
-
 # SD: SDI ------
 # Explore sexual size dimorphism
 # boxplot(dim_metadata[,cs_metadata_col]~binary_dim*dim_metadata$sex,main="Centroid Size")
@@ -143,7 +124,7 @@ calculate.SDI<-function(male.length,female.length){
   if(male.length>female.length){
     result<-(-1)*male.length/female.length +1
   }
-return(result)
+  return(result)
 }
 
 
@@ -165,33 +146,68 @@ for (i in 1:replicates) {						# start a for loop
   distribution<- rbind(distribution,rdm)					# store all differences in means
 }									# end for loop
 
-# # SSP: SDI ---------
-# boxplot(log(ssp_metadata$carapace_length)~binary*ssp_metadata$sex,main="ln(Carapace Length)") #different ways of measuring size give diff results
-# 
-# # # Calculate SDI for total dataset
-# SDI_sspset_all<-calculate.SDI(male.length=mean(ssp_metadata$carapace_length[which(ssp_metadata$sex=="male")]),
-#                               female.length=mean(ssp_metadata$carapace_length[which(ssp_metadata$sex=="female")]))
-# SDI_sspset<-rep(NA,2)
-# names(SDI_sspset)<-levels(binary_all)
-# for (i in 1:length(levels(binary_all))){
-#   subdata<-ssp_all_metadata[which(binary_dim==levels(binary_dim)[i]),]
-#   SDI_sspset[i]<-calculate.SDI(male.length=mean(subdata$carapace_length[which(subdata$sex=="male")]),
-#                                 female.length=mean(subdata$carapace_length[which(subdata$sex=="female")]))
-# }
-# 
-# # # Model SDI confidence interval for the SSP dataset as well
-# ssp_distribution<-NULL #create holder for null resampled distribution
-# sample1<-ssp_metadata$carapace_length[which(ssp_metadata$sex=="male")]
-# sample2<-ssp_metadata$carapace_length[which(ssp_metadata$sex=="female")]
-# replicates<-10000
-# for (i in 1:replicates) {						# start a for loop
-#   rm1<- sample(sample1, size=5, replace=TRUE) %>% mean	# take first bootstrap sample from pooled data (n=n1)
-#   rm2<- sample(sample2, size=5, replace=TRUE) %>% mean	# take second bootstrap sample from pooled data (n=n2)
-#   rdm<- calculate.SDI(male.length=rm1,
-#                       female.length=rm2)								# compute SDI for a given pair of bootstrap samples
-#   ssp_distribution<- rbind(ssp_distribution,rdm)					# store all differences in means
-# }									# end for-loop
-# 
+# SSP: size -----
+s1<-aov(log(ssp_all_metadata$carapace_length)~ssp_all_metadata$ssp) %>% summary
+s2<-aov(log(ssp_all_metadata$dor_cs)~ssp_all_metadata$ssp) %>% summary
+s3<-aov(log(ssp_all_metadata$lat_cs)~ssp_all_metadata$ssp) %>% summary
+s4<-aov(log(ssp_all_metadata$pos_cs)~ssp_all_metadata$ssp) %>% summary
+
+stest<-rbind(s1[[1]][1,],s2[[1]][1,],s3[[1]][1,],s4[[1]][1,]) %>% 
+  # cbind(.,rep(c("carapace_length","dorsal","lateral","posterior"),each=2))
+  cbind(.,c("carapace_length","dorsal","lateral","posterior"))
+
+stest[,5]<-p.adjust(stest[,5], method = "BH") #adjust for multiple testing
+write.csv(stest,"ssp_size_anova.csv")
+
+# #explore
+# subset<-which(ssp_all_metadata$ssp!="major"&ssp_all_metadata$ssp!="triunguis")
+# aov(log(ssp_all_metadata$carapace_length[subset])~ssp_all_metadata$ssp[subset]) %>% summary
+# aov(log(ssp_all_metadata$dor_cs[subset])~ssp_all_metadata$ssp[subset]) %>% summary
+# aov(log(ssp_all_metadata$lat_cs[subset])~ssp_all_metadata$ssp[subset]) %>% summary
+# aov(log(ssp_all_metadata$pos_cs[subset])~ssp_all_metadata$ssp[subset]) %>% summary
+
+#make plotting object for boxplot
+all_cs<-c(ssp_all_metadata$dor_cs,ssp_all_metadata$lat_cs,ssp_all_metadata$pos_cs,ssp_all_metadata$carapace_length) %>% log %>% data.frame(.,ncol=1)
+all_cs$group<-c(rep("dorsal CS",nrow(ssp_all_metadata)),rep("lateral CL",nrow(ssp_all_metadata)),rep("posterior CS",nrow(ssp_all_metadata)),rep("carapace length",nrow(ssp_all_metadata)))
+all_cs$ssp<-rep(ssp_all_metadata$ssp,4)
+
+cairo_pdf("ssp_size.pdf",width = 5.4, height = 4,family ="Arial")
+ggplot(data=all_cs,aes(x=ssp)) +
+  geom_boxplot(aes(y=.,fill=group)) +
+  
+  # geom_boxplot(binaxis="y",binwidth=0.02,stackdir="up",
+  #              aes(y=log(dor_cs),fill=spp_col[1])) +
+  # geom_boxplot(binaxis="y",binwidth=0.02,stackdir="center",
+  #              aes(y=log(lat_cs),fill=spp_col[2])) +
+  # geom_boxplot(binaxis="y",binwidth=0.02,stackdir="down",
+  #              aes(y=log(pos_cs),fill=spp_col[3])) +
+  scale_fill_manual(name="Measurement", labels=c("carapace length","dorsal CS",
+                                                 "lateral CS",
+                                                 "posterior CS"),
+                    values=spp_col[c(1,2,3,4)]) +
+  xlab("Subspecies") + 
+  ylab("ln(Carapace Length)") +
+  theme_classic()
+dev.off()  
+embed_fonts("ssp_size.pdf")
+# F: size histogram ------
+#make the histogram. first, combine subspecies and fossil datasets
+hist_metadata<-ssp_metadata
+hist_metadata$site2<-hist_metadata$site
+hist_metadata<-rbind(hist_metadata,fos_metadata)
+hist_metadata$site2<-factor(as.character(hist_metadata$site2))
+
+# plot carapace length distribution of fossils compared to modern sample
+plotfossize<-ggplot(data=hist_metadata, aes(x=carapace_length,fill=site2)) +
+  geom_histogram(data=subset(hist_metadata, !(site2 %in% "modern")),binwidth=10) +
+  geom_histogram(data=subset(hist_metadata, site2 %in% "modern"),alpha=0.3, binwidth=10,fill=NA,color="black") +
+  scale_fill_manual(name="Site",values=fos_col) +
+  xlab("Carapace Length") +
+  theme_classic() +
+  theme(legend.position = c(0.8,0.55),legend.background=element_rect(fill="white"))
+ggsave("CL_fos-vs-mod.pdf",plot=plotfossize, width = 5.4, height = 4, units = "in",family="ArialMT")
+embed_fonts("CL_fos-vs-mod.pdf") 
+ggsave("CL_fos-vs-mod.eps",plot=plotfossize, width = 5.4, height = 4, units = "in",family="ArialMT")
 
 # F: SDI modelling ------
 # # Calculate SDI for the three sites with bimodal distributions

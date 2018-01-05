@@ -1,8 +1,8 @@
-# Base script to pull together geometric morphometric analyses of Terrapene spp.
+# Base script to pull together geometric morphometric analyses of cf. Terrapene carolina
 
 scriptsdir <- "C://cygwin/home/N.S/scripts"
-# datadir <- "D:/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
-datadir <- "C:/Users/N.S/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
+datadir <- "D:/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
+# datadir <- "C:/Users/N.S/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
 
 # Load Dependencies ------------------------------------------------------------------
 # load library dependencies
@@ -63,10 +63,19 @@ fos_col<-c(brewer.pal(12,"Paired"),"white")
 ssp_col<-brewer.pal(8,"Accent") %>% rev()
 # view_col<-wes_palette("Darjeeling")
 oss_col<-c("#FFFAD2","#F9BD7E","#ED875E","#AE1C3E") #are these tol colors?
+#code for color choice from  Tim van Werkhoven for Paul Tol diverging color scheme
+map_gradient = rep(NULL,3)
+for (x in seq(0,1,length.out=nrow(ssp_metadata))){
+  rcol <- 0.237 - 2.13*x + 26.92*x**2 - 65.5*x**3 + 63.5*x**4 - 22.36*x**5
+  gcol <- ((0.572 + 1.524*x - 1.811*x**2)/(1 - 0.291*x + 0.1574*x**2))**2
+  bcol <- 1/(1.579 - 4.03*x + 12.92*x**2 - 31.4*x**3 + 48.6*x**4 - 23.36*x**5)
+  map_gradient<-rbind(map_gradient,c(rcol,gcol,bcol))
+}
+map_colors<-map_gradient %>% rgb(.)
 
 # Set View --------------------------------------------------------------
 viewoptions<-c("dor","lat","pos")
-view<-viewoptions[2]
+view<-viewoptions[1]
 source(paste(scriptsdir,"box-turtle-variation/boxturtle_settings.R",sep="/"))
 
 # Error -------------------------------------------------------------------
@@ -83,16 +92,15 @@ source(paste(scriptsdir,"box-turtle-variation/boxturtle_settings.R",sep="/"))
 # source(paste(scriptsdir,"boxturtle_linear.R",sep="/")
 # rm(list = c(setdiff(ls(),freeze),"data_all")) #clean up environment
 
+# Sexual Dimorphism -----
+source(paste(scriptsdir,"box-turtle-variation/boxturtle_asd.R",sep="/"))
+print("Dimorphism code sourced.")
+
 # Subspecies and Geography ------
 #run through first set of ssp analyses for each view.
 
-source(paste(scriptsdir,"boxturtle_ssp.R",sep="/"))
+source(paste(scriptsdir,"box-turtle-variation/boxturtle_ssp.R",sep="/"))
 print("Subspecies code sourced.")
-
-# Allometry and Dimorphism -----
-
-source(paste(scriptsdir,"boxturtle_asd.R",sep="/"))
-print("Geographic/Dimorphism code sourced.")
 
 # F+SSP: make ------
 fssp_set<-rbind(ssp_set,fos_set)
@@ -105,23 +113,20 @@ fssp_metadata$site2<-factor(as.character(fssp_metadata$site2))
 fssp_metadata$site2<-factor(fssp_metadata$site2,levels(fssp_metadata$site2)[c(1:9,11:12,10)])
 
 fssp.gpa<-arrayspecs(fssp_set,p=ncol(fssp_set)/2,k=2) %>% gpagen
-fssp.gdf<-geomorph.data.frame(fssp.gpa,fossil=fssp_metadata$fos_set)
+fssp.gdf<-geomorph.data.frame(fssp.gpa,fossil=fssp_metadata$fos_set,site=fssp_metadata$site2)
 fssp.gdf$Csize<-fssp_metadata[,cs_metadata_col]
 
 # F+SSP: allometry test -------
 
 #do two groups have difference in allometric slopes?
-advanced.procD.lm(coords~log(Csize)+fossil,~log(Csize)*fossil,
+allo.shape<-advanced.procD.lm(coords~log(Csize)+fossil,~log(Csize)*fossil,
                   groups=~fossil,slope=~log(Csize),angle.type="deg",iter=999,data=fssp.gdf) 
 #posterior: yes, both slopes and lengths; lateral: yes, slopes are different (vector lengths at 0.08)
 #dorsal, yes, groups and slopes are different.
 
-# advanced.procD.lm(coords~log(Csize),~log(Csize)+fossil,
-#                   groups=~fossil,slope=~log(Csize),angle.type="deg",iter=499,data=fssp2.gdf) 
-
-# F+SSP: allometry model ------
+write.csv(allo.shape$P.angles,paste("fssp_allometry_slopetest_",view,".csv",sep=""))
+# F+SSP: build allometry model ------
 # build allometric linear model for modern specimens to apply to fossil record
-
 model<-lm(as.matrix(ssp_set[,])~log(ssp_metadata[,cs_metadata_col])) #allometric model with CS
 # model<-lm(as.matrix(ssp_all[,])~log(ssp_all_metadata$carapace_length[])) #allometric model with CL
 modm<-matrix(model$coefficients[2,],m,k,byrow=TRUE) #m in the linear model y=mx+b
@@ -130,12 +135,10 @@ modb<-matrix(model$coefficients[1,],m,k,byrow=TRUE) #b in the linear model y=mx+
 
 #when you remove predicted shape, what you are left are the residuals, yes?
 testa<-function(x){modm*x+modb} #make modern linear model
-
 # testa(log(ssp_metadata[,cs_metadata_col][188])) %>% plot(.,asp=1) #check
 
-
 # "correct" for modern allometric predictions
-#test
+#check
 lcs<-log(fssp_metadata[,cs_metadata_col])
 predicted.shape<-array(NA,dim=c(m,k,nrow(fssp_set)))
 for(i in 1:nrow(fssp_set)){predicted.shape[,,i]<-testa(lcs[i])}
@@ -143,35 +146,104 @@ residual.shape<-arrayspecs(fssp_set,m,k)-predicted.shape
 mean.shape<-colMeans(fssp_set)%>% matrix(.,m,k,byrow=TRUE) %>% array(.,dim=c(m,k,nrow(fssp_set)))
 remaining.shape<-(mean.shape+residual.shape)
 
-#test
+#check
 fssp_metadata[which(fssp_metadata$site=="melbourne"),cs_metadata_col] %>% log
 testa(6.6) %>% plot(.,asp=1) #check
 points(matrix(fssp_set[236,],nrow=m,ncol=k,byrow=TRUE),col="red")
 points(remaining.shape[,,236],col="blue") #these three shapes should make sense. Do they?
 
+# Plot Modern Allometry -----
+# figure out centroid size of largest and smallest specimen to plot reasonable predicted shapes
+which.small<-which(ssp_metadata[,cs_metadata_col]==min(ssp_metadata[,cs_metadata_col]))
+which.large<-which(ssp_metadata[,cs_metadata_col]==max(ssp_metadata[,cs_metadata_col]))
+#test plot
+testa(log(ssp_metadata[,cs_metadata_col][which.large])) %>% plot(.,asp=1) #check
+small_r<-testa(log(ssp_metadata[,cs_metadata_col][which.small])) %>% rotateAMatrix(.,r1,0,0)
+large_r<-testa(log(ssp_metadata[,cs_metadata_col][which.large])) %>% rotateAMatrix(.,r1,0,0)
 
-# F+SSP: allometry modelling ------
+pdf(paste("mod_wireframe_small_",view,".pdf",sep=""),width = 4.4, height = 4.4,useDingbats=FALSE)
+par(mar=c(.01,.01,.01,.01))
+plotRefToTarget(large_r,small_r,method="TPS",gridPars=gridPar(tar.pt.size=.5,grid.lwd=0.8))
+points(small_r,pch=16)
+dev.off()
+
+pdf(paste("mod_wireframe_large",view,".pdf",sep=""),width = 4.4, height = 4.4,useDingbats=FALSE)
+par(mar=c(.01,.01,.01,.01))
+plotRefToTarget(small_r,large_r,method="TPS",gridPars=gridPar(tar.pt.size=.5,grid.lwd=0.8))
+points(large_r,pch=15)
+dev.off()
+
 # F+SSP: PCA-----
 # PCAfos.allo<-prcomp(two.d.array(remaining.shape),scale.=FALSE)
 PCAfssp.allo<-prcomp(two.d.array(remaining.shape),scale.=FALSE)
 an_fssp.allo<-anderson(PCAfssp.allo$sdev)
+
+cairo_pdf(paste("fssp_allo_PCA_",view,".pdf",sep=""),width = 4.4, height = 4.4,family ="Arial")
+par(mar=c(3.9,3.6,.5,.5))
 plot(PCAfssp.allo$x[,1:2],bg=c(fos_col[1:11],"white")[fssp_metadata$site2],pch=c(21,22)[fssp_metadata$fos_set],
-     cex=(fssp_metadata[,cs_metadata_col]/1000)*3)
-# text(PCAfos.allo$x[,1],PCAfos.allo$x[,2],c(1:nrow(fos_set)))
-legend('bottomleft',cex=.7,pch=c(21),pt.bg=fos_col,legend=levels(fssp_metadata$site2),pt.cex=2)
+     cex=1.5,xlab="",ylab="")
+mtext(paste("PC 1 (",round(an_fssp.allo$percent[1],3),"%)",sep=""),side=1,line=3,cex=2)
+mtext(paste("PC 2 (",round(an_fssp.allo$percent[2],3),"%)",sep=""),side=2,line=2,cex=2)
+dev.off()
 
+pdf("fssp_allo_PCA_legend.pdf",useDingbats=FALSE) #make legend
+plot(PCAfssp.allo$x[,c(1,2)],type="n",axes=F,xlab="",ylab="")
+legend('center',cex=2,pch=c(rep(21,11),22),pt.bg=c(fos_col[1:11],"white"),legend=levels(fssp_metadata$site2),pt.cex=4)
+dev.off()
+
+# # F: Haile -----
+# # are Auffenberg's two Haile types significantly different? No. p > 0.1 all cases.
+# two.hailes<-as.character(fssp_metadata$site)
+# two.hailes[which(fssp_metadata$id=="UF3148"|
+#                    fssp_metadata$id=="UF3150"|
+#                    fssp_metadata$id=="UF3143")]<-"haile2" #based on Auffenberg 1967
+# subset<-which(two.hailes=="haile 8a"|two.hailes=="haile2")
+# fssp_metadata$id[subset]
+# adonis(PCAfssp.allo$x[subset,c(1:PCc)]~two.hailes[subset],permutations=1000,method="euclidean")
+# 
+# haile.gpa<-remaining.shape[,,subset] %>% gpagen
+# haile.gdf<-geomorph.data.frame(haile.gpa,haile=two.hailes[subset])
+# haile.gdf$Csize<-fssp_metadata[subset,cs_metadata_col]
+# procD.lm(coords~haile,iter=999,data=haile.gdf)
+# #in no view, in no test, are the two groups significantly different
+# # plot(haile.gpa$consensus)
+# # # look at mean shapes vs each other and grand mean
+# # hailemean<-mshp(fos_set[which(fos_metadata$site=="haile 8a"),])$meanshape
+# # haile1mean<-mshp(fos_set[which(two.hailes=="haile 8a"),])$meanshape
+# # haile2mean<-mshp(fos_set[which(two.hailes=="haile2"),])$meanshape
+# # 
+# # #plot two comparative frameworks for proposed Haile morphs
+# # # cairo_pdf(paste("haile_shape_",view,".pdf",sep=""),width = 7.6, height = 7.6)
+# # # par(mar=c(.5,.5,.5,.5))
+# # # could it be dimorphism? What are the odds of sampling only 2 males and 3 females or vice versa?
+# # #this isn't an appropriate way to model--fix, eventually.
+# # plot(hailemean,asp=1,axes=F,xlab="",ylab="",pch=21,bg="black")
+# # points(haile1mean[,1],haile1mean[,2],pch=21,bg="red",cex=0.6)
+# # points(haile2mean[,1],haile2mean[,2],pch=21,bg="blue",cex=0.6)
+# # 
+# # # not that different in size, use single allometric model
+# # temp<-fos_site_vs_ssp("haile 8a")
+# # # pdf(paste(view,levels(fos_metadata$site2)[i],"shape.pdf",sep="_"))
+# # plot(temp[,,1],asp=1,axes=F,xlab="",ylab="",type="n")
+# # temppts2<-arrayspecs(fos_set, m, k)
+# # points(temppts2[,1,which(two.hailes=="haile 8a")],temppts2[,2,which(two.hailes=="haile 8a")],pch=21,bg="red",cex=0.6)
+# # points(temppts2[,1,which(two.hailes=="haile2")],temppts2[,2,which(two.hailes=="haile2")],pch=21,bg="blue",cex=0.6)
+# # # points(temp[,,1],pch=21,bg="black",cex=1)
+# # #dev.off()
+# 
 # F+SSP: stats-----
-advanced.procD.lm(coords~log(Csize),~log(Csize)+site,
-                  groups=~site,slope=~log(Csize),iter=499,data=fssp2.gdf) 
-procD.lm(coords~log(Csize),RRPP=TRUE,iter=499,data=fssp2.gdf)
+fssp2.gpa<-remaining.shape %>% gpagen
+fssp2.gdf<-geomorph.data.frame(fssp2.gpa,fossil=fssp_metadata$fos_set,site=fssp_metadata$site2)
+fssp2.gdf$Csize<-fssp_metadata[,cs_metadata_col]
 
+Pman.fossil<-advanced.procD.lm(coords~1,coords~site,groups=~site,iter=999,data=fssp2.gdf) 
+
+write.csv(Pman.fossil$P.means.dist,paste("fssp_pman_bysite_",view,".csv",sep=""))
 
 # F+SSP: disparity ------
-# individual.disparity(PCAfssp$x[,c(1:7)]) #95% variance explained
-disp_total<-individual.disparity(PCAfssp$x[,c(1:PCc)]) #all non-zero PCs
-# individual.disparity(PCAfssp$x[,]) #all data. 1st very different from 2nd & 3rd
+disp_total<-individual.disparity(PCAfssp.allo$x[,c(1:PCc)]) #all non-zero PCs
 
-observed<-PCAfssp$x[which(fssp_metadata$ssp_set=="yes"),c(1:PCc)] %>% individual.disparity() 
+observed<-PCAfssp.allo$x[which(fssp_metadata$ssp_set=="yes"),c(1:PCc)] %>% individual.disparity() 
 replicates<-1000 #eventually, put at 10000?
 
 # now, essentially, rarefaction for disparity: is the ssp dataset size large enough to capture standing disparity?
@@ -184,7 +256,7 @@ for(N in 1:length(sampleN)){
   distribution<-NULL #create holder for null resampled distribution
   for (i in 1:replicates) {						# start for-loop
     rm1<- sample(c(1:nrow(ssp_set)),size=sampleN[N], replace=TRUE) %>% #resample ssp specimens with replacement
-      PCAfssp$x[which(fssp_metadata$ssp_set=="yes"),c(1:PCc)][.,] %>% #take PC scores of resamples
+      PCAfssp.allo$x[which(fssp_metadata$ssp_set=="yes"),c(1:PCc)][.,] %>% #take PC scores of resamples
       individual.disparity  # calculate disparity for resamples
     distribution<- rbind(distribution,rm1)					# store all resampled disparities
   }									# end for-loop
@@ -201,7 +273,7 @@ colnames(fos_disparity)<-c("d","n")
 
 for(i in 1:length(levels(fos_metadata$site2))){
   select_disp<-which(fssp_metadata$site2=="modern"|fssp_metadata$site2==levels(fos_metadata$site2)[i])
-  fos_disparity$d[i]<-individual.disparity(PCAfssp$x[select_disp,c(1:PCc)]) #all non-zero PCs
+  fos_disparity$d[i]<-individual.disparity(PCAfssp.allo$x[select_disp,c(1:PCc)]) #all non-zero PCs
   fos_disparity$n[i]<-length(which(fssp_metadata$site2==levels(fos_metadata$site2)[i]))+nrow(ssp_set)
 }
 
@@ -225,7 +297,7 @@ for(i in 1:length(levels(fos_metadata$site2))){
 
 cairo_pdf(paste("disparity_",view,".pdf",sep=""),width = 5.4, height = 2,family ="Arial")
 par(mar=c(3,3.3,.5,.5))
-plot(sampleN,rare_disparity$mean,ylim=c(mean(rare_disparity$mean),mean(rare_disparity$mean)+0.0007),
+plot(sampleN,rare_disparity$mean,ylim=c(mean(rare_disparity$mean),disp_total+0.0002),
      xlim=c(100,nrow(fssp_set)),xlab="",ylab="") #wasted space, mess with limits
 polygon(c(sampleN,rev(sampleN)),
         c(rare_disparity$lo,rev(rare_disparity$hi)),
@@ -250,7 +322,7 @@ embed_fonts("disparity_legend.pdf")
 
 # # F: PCA ---------
 # # Principal Components Analysis (look at data)
-PCAfos<-prcomp(fos_set,scale.=FALSE)
+# PCAfos<-prcomp(fos_set,scale.=FALSE)
 # an<-anderson(PCAfos$sdev)
 # 
 # cairo_pdf(paste("fos_PCA_",view,".pdf",sep=""),width = 4.4, height = 4.4,family ="Arial")
@@ -270,13 +342,6 @@ PCAfos<-prcomp(fos_set,scale.=FALSE)
 
 # fos_metadata[,cs_metadata_col]/(min(fos_metadata[,cs_metadata_col]))
 
-#is this appropriate?
-fos.gpa<-remaining.shape %>% gpagen
-fos.gdf<-geomorph.data.frame(fos.gpa,site2=fos_metadata$site2)
-fos.gdf$Csize<-fos_metadata[,cs_metadata_col]
-advanced.procD.lm(coords~1,~site3,groups=~site3,iter=999,data=fos.gdf)
-
-
 # F: k-means clustering -------
 classifier<-as.character(fssp_metadata$site2)
 X<-PCAfssp.allo$x[which(fssp_metadata$fos_set=="yes"),1:PCc]
@@ -291,26 +356,8 @@ kmeans.report<-rbind(one.cluster,more.clusters,how.much,best.k)
 row.names(kmeans.report)<-c("BIC.best.one.cluster",
                             "BIC.best.multiple.clusters",
                             "deltaBIC","best.k")
-write.csv(kmeans.report,paste("kmeans_results_",view,".csv",sep=""))
+write.csv(kmeans.report,paste("kmeans_fos_results_",view,".csv",sep=""))
 
-# procD.lm(coords~log(Csize)+site4,RRPP=TRUE,iter=499,data=fos.gdf)
-# procD.lm(coords~log(Csize)+site5,RRPP=TRUE,iter=499,data=fos.gdf)
-test.maybe<-advanced.procD.lm(coords~log(Csize),~log(Csize)+site3,
-                              groups=~site3,slope=~log(Csize),iter=999,data=fos.gdf)
-summary(test.maybe)
-
-advanced.procD.lm(coords~log(Csize),~log(Csize)+site3,
-                  groups=~site3,slope=~log(Csize),iter=999,data=fos.gdf)
-
-advanced.procD.lm(coords~1,~site3,
-                  groups=~site3,iter=999,data=fos.gdf)
-
-#in lateral view Camelot2 is different if you take size into account, 
-#if you don't take size into account, large ones are sort of/mostly different from much smaller ones, esp. Melbourne
-#in posterior view, nothing is different with size into account, 
-#if you don't take size into account, similar pattern to lateral -- differences seem to scale by size
-#in dorsal view, with size, a random diff b/t ardis and camelot, ardis and haile, ardis and reddick
-#without size, camelot2/friesanhahn, camelot2/haile, holocene/friesenhahn, melbourne/friesenhahn, seems random.
 
 fssp.gpa<-arrayspecs(fssp_set,p=ncol(fssp_set)/2,k=2) %>% gpagen
 # fssp2.gdf<-geomorph.data.frame(fssp.gpa,site=c(as.character(site5),rep("holocene",nrow(ssp_metadata))))
@@ -337,14 +384,31 @@ advanced.procD.lm(coords~1,~site,
 
 
 
-# F: stats -----
-#is this appropriate?
-fssp.gpa<-remaining.shape %>% gpagen
-fssp.gdf<-geomorph.data.frame(fssp.gpa,site2=fssp_metadata$site2,fossil=fssp_metadata$fos_set,
-                              site3=c(rep("modern",nrow(ssp_set)),as.character(site3)))
-# fos.gdf$Csize<-fos_metadata[,cs_metadata_col]
-advanced.procD.lm(coords~1,~site2,groups=~site2,iter=999,data=fssp.gdf)
-
+# # F: stats -----
+# #is this appropriate?
+# fssp.gpa<-remaining.shape %>% gpagen
+# fssp.gdf<-geomorph.data.frame(fssp.gpa,site2=fssp_metadata$site2,fossil=fssp_metadata$fos_set,
+#                               site3=c(rep("modern",nrow(ssp_set)),as.character(site3)))
+# # fos.gdf$Csize<-fos_metadata[,cs_metadata_col]
+# advanced.procD.lm(coords~1,~site2,groups=~site2,iter=999,data=fssp.gdf)
+# # procD.lm(coords~log(Csize)+site4,RRPP=TRUE,iter=499,data=fos.gdf)
+# # procD.lm(coords~log(Csize)+site5,RRPP=TRUE,iter=499,data=fos.gdf)
+# test.maybe<-advanced.procD.lm(coords~log(Csize),~log(Csize)+site3,
+#                               groups=~site3,slope=~log(Csize),iter=999,data=fos.gdf)
+# summary(test.maybe)
+# 
+# advanced.procD.lm(coords~log(Csize),~log(Csize)+site3,
+#                   groups=~site3,slope=~log(Csize),iter=999,data=fos.gdf)
+# 
+# advanced.procD.lm(coords~1,~site3,
+#                   groups=~site3,iter=999,data=fos.gdf)
+# 
+# #in lateral view Camelot2 is different if you take size into account, 
+# #if you don't take size into account, large ones are sort of/mostly different from much smaller ones, esp. Melbourne
+# #in posterior view, nothing is different with size into account, 
+# #if you don't take size into account, similar pattern to lateral -- differences seem to scale by size
+# #in dorsal view, with size, a random diff b/t ardis and camelot, ardis and haile, ardis and reddick
+# #without size, camelot2/friesanhahn, camelot2/haile, holocene/friesenhahn, melbourne/friesenhahn, seems random.
 
 # # appendix -----
 # #make lists of specimens in each dataset
@@ -450,51 +514,3 @@ advanced.procD.lm(coords~1,~site2,groups=~site2,iter=999,data=fssp.gdf)
 # site5[which(site5!="camelot2")]<-"holocene"
 # site5<-droplevels(site5)
 
-# # F: Haile -----
-# # are Auffenberg's two Haile types significantly different? No. p > 0.1 all cases. 
-# two.hailes<-as.character(fos_metadata$site)
-# two.hailes[which(fos_metadata$id=="UF3148"|
-#                    fos_metadata$id=="UF3150"|
-#                    fos_metadata$id=="UF3143")]<-"haile2" #based on Auffenberg 1967
-# subset<-which(two.hailes=="haile 8a"|two.hailes=="haile2")
-# fos_metadata$id[subset]
-# adonis(PCAfos$x[subset,c(1:PCc)]~two.hailes[subset],permutations=1000,method="euclidean")
-# 
-# # look at mean shapes vs each other and grand mean
-# hailemean<-mshp(fos_set[which(fos_metadata$site=="haile 8a"),])$meanshape
-# haile1mean<-mshp(fos_set[which(two.hailes=="haile 8a"),])$meanshape
-# haile2mean<-mshp(fos_set[which(two.hailes=="haile2"),])$meanshape
-# 
-# #plot two comparative frameworks for proposed Haile morphs
-# cairo_pdf(paste("haile_shape_",view,".pdf",sep=""),width = 7.6, height = 7.6)
-# par(mfrow=c(1,2))
-# par(mar=c(.5,.5,.5,.5))
-# # could it be dimorphism? What are the odds of sampling only 2 males and 3 females or vice versa?
-#this isn't an appropriate way to model--fix, eventually. 
-# xlims<-c(min(c(hailemean[,1]-sd_female2[,1],hailemean[,1]-sd_male2[,1])),
-#          max(c(hailemean[,1]+sd_female2[,1],hailemean[,1]+sd_male2[,1])))
-# ylims<-c(min(c(hailemean[,2]-sd_female2[,2],hailemean[,2]-sd_male2[,2])),
-#          max(c(hailemean[,2]+sd_female2[,2],hailemean[,2]+sd_male2[,2])))
-# plot(hailemean,asp=1,axes=F,xlab="",ylab="",pch=21,bg="black")
-# plot.errell(haile2mean,sd_male2,color.bg=spp_col[1],alpha.bg=0.5)
-# plot.errell(haile1mean,sd_female2,color.bg=spp_col[2],alpha.bg=0.5)
-# points(haile1mean[,1],haile1mean[,2],pch=21,bg="red",cex=0.6)
-# points(haile2mean[,1],haile2mean[,2],pch=21,bg="blue",cex=0.6)
-# 
-# # not that different in size, use single allometric model
-# temp<-fos_site_vs_ssp("haile 8a")
-# xlims<-c(min(c(temp[,1,1]-sd_model2[,1,1],temp[,1,2]-sd_model2[,1,2])),
-#          max(c(temp[,1,1]+sd_model2[,1,1],temp[,1,2]+sd_model2[,1,2])))
-# ylims<-c(min(c(temp[,2,1]-sd_model2[,2,1],temp[,2,2]-sd_model2[,2,2])),
-#          max(c(temp[,2,1]+sd_model2[,2,1],temp[,2,2]+sd_model2[,2,2])))
-# # pdf(paste(view,levels(fos_metadata$site2)[i],"shape.pdf",sep="_"))
-# #
-# plot(temp[,,1],asp=1,axes=F,xlab="",ylab="",xlim=xlims,ylim=ylims,type="n")
-# for (j in c(2,3)){
-#   plot.errell(temp[,,j],sd_model2[,,j-1],color.bg=ssp_col[j-1],alpha.bg=0.6)
-# }
-# temppts2<-arrayspecs(fos_set, m, k)
-# points(temppts2[,1,which(two.hailes=="haile 8a")],temppts2[,2,which(two.hailes=="haile 8a")],pch=21,bg="red",cex=0.6)
-# points(temppts2[,1,which(two.hailes=="haile2")],temppts2[,2,which(two.hailes=="haile2")],pch=21,bg="blue",cex=0.6)
-# # points(temp[,,1],pch=21,bg="black",cex=1)
-# dev.off()
