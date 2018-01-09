@@ -159,7 +159,8 @@ stest<-rbind(s1[[1]][1,],s2[[1]][1,],s3[[1]][1,],s4[[1]][1,]) %>%
 stest[,5]<-p.adjust(stest[,5], method = "BH") #adjust for multiple testing
 write.csv(stest,"ssp_size_anova.csv")
 
-# #explore
+#explore
+range(ssp_all_metadata$carapace_length[which(ssp_all_metadata$ssp=="triunguis")])
 # subset<-which(ssp_all_metadata$ssp!="major")
 # aov(log(ssp_all_metadata$carapace_length[subset])~ssp_all_metadata$ssp[subset]) %>% summary
 # aov(log(ssp_all_metadata$dor_cs[subset])~ssp_all_metadata$ssp[subset]) %>% summary

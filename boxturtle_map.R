@@ -105,6 +105,6 @@ ggplot(data=localities_strat,aes(x=site,y=min,color=group))+
   theme(text=element_text(size=10),
         axis.text.x=element_text(angle=-45,hjust=1,color="black")) +
   scale_x_discrete(position = "top") +
-  scale_color_manual(values= c("#FED98E","#EC7014","#8C2D04"),guide=FALSE) #"#FB9A29"
+  scale_color_manual(values= c("#8C2D04","#EC7014","#FED98E"),guide=FALSE) #"#FB9A29"
 dev.off()
 embed_fonts("strat.pdf")
