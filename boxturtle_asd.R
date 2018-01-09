@@ -27,10 +27,8 @@ advanced.procD.lm(coords ~ log(Csize) + ssp, ~log(Csize) * ssp,
 advanced.procD.lm(coords ~ (log(Csize) + ssp) + sex, ~(log(Csize) + ssp) * sex,
                   groups=~sex,slope=~log(Csize),iter = 999, data = dim.gdf) #report R^2,F,p, df
 
-
 pMAN<-procD.lm(coords ~ (log(Csize) + ssp) * sex,iter = 999, data = dim.gdf)
 
-for(i in 1:nrow(pMAN$aov.tab)){pMAN$aov.tab[i,7]<-p.adjust(pMAN$aov.tab[i,7], method = "BH", n = 3)} #correct for multiple tests, this time for 3 views
 write.csv(pMAN$aov.table[,c(1,4,5,7)],paste("sd_procMANOVA_dimset_",view,".csv",sep=""))
 
 # SD: CVA -----

@@ -1,8 +1,8 @@
 # Base script to pull together geometric morphometric analyses of cf. Terrapene carolina
 
 scriptsdir <- "C://cygwin/home/N.S/scripts"
-datadir <- "D:/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
-# datadir <- "C:/Users/N.S/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
+# datadir <- "D:/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
+datadir <- "C:/Users/N.S/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
 
 # Load Dependencies ------------------------------------------------------------------
 # load library dependencies
@@ -37,7 +37,6 @@ source("box-turtle-variation/boxturtle_utils.R")
 
 # load Julien Claude's code:
 source("Morphometrics_with_R.R")
-# source("common.slope.test.R") #no longer necessary with revision
 
 #settings to get non-Helvetica fonts to work with ggplot 
 library(extrafont)
@@ -54,7 +53,6 @@ data_uni<-filter(data_all,err_rep==0) #get rid of error replicates
 metadata_columns<-c(1,58,147,214:231) #which columns in total dataset have metadata
 k<-2 #number of dimensions
 ssp_sd_id<-read.csv("ssp_sd_id.csv",header=TRUE) #sex assessments
-# bp<-0.05/(choose(4,2)*3) #bonferroni-corrected p-value
 opar<-par
 
 # Colors ----------------------------------------------------------------
@@ -117,11 +115,10 @@ fssp.gdf<-geomorph.data.frame(fssp.gpa,fossil=fssp_metadata$fos_set,site=fssp_me
 fssp.gdf$Csize<-fssp_metadata[,cs_metadata_col]
 
 # F+SSP: allometry test -------
-
 #do two groups have difference in allometric slopes?
 allo.shape<-advanced.procD.lm(coords~log(Csize)+fossil,~log(Csize)*fossil,
                   groups=~fossil,slope=~log(Csize),angle.type="deg",iter=999,data=fssp.gdf) 
-#posterior: yes, both slopes and lengths; lateral: yes, slopes are different (vector lengths at 0.08)
+#posterior: no.; lateral: yes, slopes are different (vector lengths at 0.08)
 #dorsal, yes, groups and slopes are different.
 
 write.csv(allo.shape$P.angles,paste("fssp_allometry_slopetest_",view,".csv",sep=""))
@@ -188,57 +185,38 @@ dev.off()
 
 pdf("fssp_allo_PCA_legend.pdf",useDingbats=FALSE) #make legend
 plot(PCAfssp.allo$x[,c(1,2)],type="n",axes=F,xlab="",ylab="")
-legend('center',cex=2,pch=c(rep(21,11),22),pt.bg=c(fos_col[1:11],"white"),legend=levels(fssp_metadata$site2),pt.cex=4)
+legend('center',cex=1,pch=c(rep(22,11),21),pt.bg=c(fos_col[1:11],"white"),legend=levels(fssp_metadata$site2),pt.cex=2)
 dev.off()
 
-# # F: Haile -----
-# # are Auffenberg's two Haile types significantly different? No. p > 0.1 all cases.
-# two.hailes<-as.character(fssp_metadata$site)
-# two.hailes[which(fssp_metadata$id=="UF3148"|
-#                    fssp_metadata$id=="UF3150"|
-#                    fssp_metadata$id=="UF3143")]<-"haile2" #based on Auffenberg 1967
-# subset<-which(two.hailes=="haile 8a"|two.hailes=="haile2")
-# fssp_metadata$id[subset]
-# adonis(PCAfssp.allo$x[subset,c(1:PCc)]~two.hailes[subset],permutations=1000,method="euclidean")
-# 
-# haile.gpa<-remaining.shape[,,subset] %>% gpagen
-# haile.gdf<-geomorph.data.frame(haile.gpa,haile=two.hailes[subset])
-# haile.gdf$Csize<-fssp_metadata[subset,cs_metadata_col]
-# procD.lm(coords~haile,iter=999,data=haile.gdf)
-# #in no view, in no test, are the two groups significantly different
-# # plot(haile.gpa$consensus)
-# # # look at mean shapes vs each other and grand mean
-# # hailemean<-mshp(fos_set[which(fos_metadata$site=="haile 8a"),])$meanshape
-# # haile1mean<-mshp(fos_set[which(two.hailes=="haile 8a"),])$meanshape
-# # haile2mean<-mshp(fos_set[which(two.hailes=="haile2"),])$meanshape
-# # 
-# # #plot two comparative frameworks for proposed Haile morphs
-# # # cairo_pdf(paste("haile_shape_",view,".pdf",sep=""),width = 7.6, height = 7.6)
-# # # par(mar=c(.5,.5,.5,.5))
-# # # could it be dimorphism? What are the odds of sampling only 2 males and 3 females or vice versa?
-# # #this isn't an appropriate way to model--fix, eventually.
-# # plot(hailemean,asp=1,axes=F,xlab="",ylab="",pch=21,bg="black")
-# # points(haile1mean[,1],haile1mean[,2],pch=21,bg="red",cex=0.6)
-# # points(haile2mean[,1],haile2mean[,2],pch=21,bg="blue",cex=0.6)
-# # 
-# # # not that different in size, use single allometric model
-# # temp<-fos_site_vs_ssp("haile 8a")
-# # # pdf(paste(view,levels(fos_metadata$site2)[i],"shape.pdf",sep="_"))
-# # plot(temp[,,1],asp=1,axes=F,xlab="",ylab="",type="n")
-# # temppts2<-arrayspecs(fos_set, m, k)
-# # points(temppts2[,1,which(two.hailes=="haile 8a")],temppts2[,2,which(two.hailes=="haile 8a")],pch=21,bg="red",cex=0.6)
-# # points(temppts2[,1,which(two.hailes=="haile2")],temppts2[,2,which(two.hailes=="haile2")],pch=21,bg="blue",cex=0.6)
-# # # points(temp[,,1],pch=21,bg="black",cex=1)
-# # #dev.off()
-# 
+# F: Haile -----
+#make mean modern shape
+modern_r<-remaining.shape[,,which(fssp_metadata$site2=="modern")] %>% apply(.,c(1,2),mean) %>% 
+  rotateAMatrix(.,r1,0,0)
+haile.shapes<-remaining.shape[,,which(fssp_metadata$site2=="haile 8a")]
+haile_mean_r<-apply(haile.shapes,c(1,2),mean) %>% rotateAMatrix(.,r1,0,0)
+haile_variation_r<-apply(haile.shapes,3,function(x) rotateAMatrix(x,r1,0,0)) %>% 
+  array(.,dim=c(m,k,nrow(haile.shapes)))
+
+pdf(paste("haile_comparison_",view,".pdf",sep=""),width = 4.4, height = 4.4,useDingbats=FALSE)
+par(mar=c(.01,.01,.01,.01))
+plotRefToTarget(modern_r,haile_mean_r,method="TPS",gridPars=gridPar(tar.pt.size=.5,grid.lwd=0.8))
+for (i in 1:dim(haile.shapes)[3]){points(haile_variation_r[,,i],pch=16,cex=0.8,col="gray")}
+points(haile_mean_r,pch=16)
+dev.off()
+
 # F+SSP: stats-----
 fssp2.gpa<-remaining.shape %>% gpagen
 fssp2.gdf<-geomorph.data.frame(fssp2.gpa,fossil=fssp_metadata$fos_set,site=fssp_metadata$site2)
 fssp2.gdf$Csize<-fssp_metadata[,cs_metadata_col]
 
 Pman.fossil<-advanced.procD.lm(coords~1,coords~site,groups=~site,iter=999,data=fssp2.gdf) 
+#adjust for number of tests, which is number of sites-1?
+Pman.fossil.adjust<-Pman.fossil$P.means.dist
+for (i in 1:ncol(Pman.fossil.adjust)){
+  Pman.fossil.adjust[,i]<-p.adjust(Pman.fossil.adjust[,i],method="BH")
+}
 
-write.csv(Pman.fossil$P.means.dist,paste("fssp_pman_bysite_",view,".csv",sep=""))
+write.csv(Pman.fossil.adjust,paste("fssp_pman_bysite_",view,".csv",sep=""))
 
 # F+SSP: disparity ------
 disp_total<-individual.disparity(PCAfssp.allo$x[,c(1:PCc)]) #all non-zero PCs
@@ -247,7 +225,7 @@ observed<-PCAfssp.allo$x[which(fssp_metadata$ssp_set=="yes"),c(1:PCc)] %>% indiv
 replicates<-1000 #eventually, put at 10000?
 
 # now, essentially, rarefaction for disparity: is the ssp dataset size large enough to capture standing disparity?
-sampleN<-seq(10,nrow(ssp_set),by=10)   #start with 10, but maybe go to 5?
+sampleN<-seq(10,200,by=10)   #start with 10, but maybe go to 5?
 
 rare_disparity<-matrix(NA,nrow=length(sampleN),ncol=2) %>% as.data.frame
 colnames(rare_disparity)<-c("mean","sd")
@@ -504,13 +482,3 @@ advanced.procD.lm(coords~1,~site,
 #   scale_fill_manual(values=fos_col) +
 #   coord_fixed(1.1)
 # dev.off()
-# delete me? -------
-# site4<-site3
-# levels(site4)<-c(levels(site3),"texas","florida")
-# site4[which(site4=="friesenhahn cave"|site4=="ingleside")]<-"texas"
-# site4[which(site4=="haile 8a"|site4=="reddick 1b")]<-"florida"
-# site4<-droplevels(site4)
-# site5<-site4
-# site5[which(site5!="camelot2")]<-"holocene"
-# site5<-droplevels(site5)
-

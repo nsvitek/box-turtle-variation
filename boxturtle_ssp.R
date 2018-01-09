@@ -98,15 +98,15 @@ fs$variables
 # usa<-map_data('state')
 # xlims<-range(ssp.space@bbox[1,])+c(-0.8,+0.8)
 # ylims<-range(ssp.space@bbox[2,])+c(-0.8,+0.8)
-# # 
+# #
 # # choices<-which(colnames(sevm$vectors) %in% fs$variables)
 # ssp.space.plot<-cbind(ssp_metadata$longitude,ssp_metadata$latitude,sevm$vectors[,c(1,2,3)]) %>% as.data.frame
-# colnames(ssp.space.plot)<-c("longitude","latitude","EV1","EV2","EV3")
+# colnames(ssp.space.plot)<-c("longitude","latitude","SE1","SE2","SE3")
 # #can't figure out how to completely automate this plot in every view. Sorry.
 # cairo_pdf("eigenmap1.pdf",width = 5.4, height = 4.4,family ="Arial",bg="transparent")
 # ggplot(data=ssp.space.plot,aes(x=longitude,y=latitude))+
 #   geom_polygon(data=usa,aes(x=long,y=lat,group=group),fill=NA,color="gray") +
-#   geom_point(aes(fill=EV1),shape=21,size=2)+
+#   geom_point(aes(fill=SE1),shape=21,size=2)+
 #   scale_fill_gradientn(colours=map_colors) +
 #   coord_cartesian(xlim=xlims,ylim=ylims)+
 #   theme_classic() +
@@ -124,7 +124,7 @@ fs$variables
 # cairo_pdf("eigenmap2.pdf",width = 5.4, height = 4.4,family ="Arial",bg="transparent")
 # ggplot(data=ssp.space.plot,aes(x=longitude,y=latitude))+
 #   geom_polygon(data=usa,aes(x=long,y=lat,group=group),fill=NA,color="gray") +
-#   geom_point(aes(fill=EV2),shape=21,size=2)+
+#   geom_point(aes(fill=SE2),shape=21,size=2)+
 #   scale_fill_gradientn(colours=map_colors) +
 #   coord_cartesian(xlim=xlims,ylim=ylims)+
 #   theme_classic() +
@@ -142,7 +142,7 @@ fs$variables
 # cairo_pdf("eigenmap3.pdf",width = 5.4, height = 4.4,family ="Arial",bg="transparent")
 # ggplot(data=ssp.space.plot,aes(x=longitude,y=latitude))+
 #   geom_polygon(data=usa,aes(x=long,y=lat,group=group),fill=NA,color="gray") +
-#   geom_point(aes(fill=EV3),shape=21,size=2)+
+#   geom_point(aes(fill=SE3),shape=21,size=2)+
 #   scale_fill_gradientn(colours=map_colors) +
 #   coord_cartesian(xlim=xlims,ylim=ylims)+
 #   theme_classic() +
@@ -169,7 +169,7 @@ ssp.gdf$Csize<-ssp_metadata[,cs_metadata_col]
 
 #Make an aspatial model.
 #Step 1 of Dr. Collyer's Little Guide
-advanced.procD.lm(coords~log(Csize)+ssp,~log(Csize)*ssp,iter=999,data=ssp.gdf) 
+advanced.procD.lm(coords~log(Csize)+ssp,~log(Csize)*ssp,iter=999,data=ssp.gdf)
 
 #Significant. Step 1b
 advanced.procD.lm(coords~log(Csize)+ssp,~log(Csize)*ssp,
@@ -178,14 +178,14 @@ advanced.procD.lm(coords~log(Csize)+ssp,~log(Csize)*ssp,
 
 #Not significant. Step 2. "Focus on the LS means If ANOVA does not return a significant result, groups are not different."
 P.man.nospace<-advanced.procD.lm(coords~log(Csize),~log(Csize)+ssp,
-                  groups=~ssp,slope=~log(Csize),iter=999,data=ssp.gdf) 
+                  groups=~ssp,slope=~log(Csize),iter=999,data=ssp.gdf)
 P.man.nospace$P.slopes.dist
-#results: 
+#results:
 #dorsal: differences between triunguis-major and triunguis-carolina group
 #lateral: differences between bauri-carolina, bauri-triunguis, maybe major-triunguis?
 #posterior: nothing significant
 
-#Incorporate spatial autocorrelation into the model 
+#Incorporate spatial autocorrelation into the model
 # top the EVs: posterior view: PCNM 1,2; lateral view: PCNM 1,2; dorsal view: PCNM 2,3
 # go with 1 and 2, the two consistently important EVs? Or just 2? First separately.
 # (sevm$values/sum(sevm$values)*100) #how to interpret with negative eigenvalues?
@@ -194,27 +194,71 @@ if(view=="lat"|view=="pos"){
   P.man.pair.space<-advanced.procD.lm(coords~(PCNM2+log(Csize)),  ~(PCNM2+log(Csize))+ssp, iter=999,
                     groups=~ssp,slope=~(PCNM2+log(Csize)),data=ssp.gdf)
   P.man.space<-procD.lm(coords~PCNM1+PCNM2+log(Csize), iter=999,data=ssp.gdf)
-  
+
   #lateral: nothing
   #posterior: nothing, but there was nothing before.
 } else if (view=="dor"){
   P.man.pair.space<-advanced.procD.lm(coords~(PCNM3+log(Csize)),  ~(PCNM3+log(Csize))+ssp, iter=999,
                                  groups=~ssp,slope=~(PCNM3+log(Csize)),data=ssp.gdf)
   P.man.space<-procD.lm(coords~PCNM2+PCNM3+log(Csize), iter=999,data=ssp.gdf)
-  #dorsal: nothing. 
+  #dorsal: nothing.
 }
 
 P.man.pair.space$P.slopes.dist
 
 P.man.results<-P.man.pair.space$P.slopes.dist
-P.man.results[lower.tri(P.man.results)]<-P.man.nospace$P.slopes.dist[lower.tri(P.man.nospace$P.slopes.dist)]
+for (i in 1:ncol(P.man.results)){
+  P.man.results[,i]<-p.adjust(P.man.results[,i],method="BH")
+}
+P.man.pair.nospace<-P.man.nospace$P.slopes.dist
+for (i in 1:ncol(P.man.pair.nospace)){
+  P.man.pair.nospace[,i]<-p.adjust(P.man.pair.nospace[,i],method="BH")
+}
+
+P.man.results[lower.tri(P.man.results)]<-P.man.pair.nospace[lower.tri(P.man.pair.nospace)]
+
 write.csv(P.man.results,paste("Pman_pairwise_results_",view,".csv",sep=""))
 write.csv(P.man.space$aov.table,paste("Pman_continuous_results_",view,".csv",sep=""))
 # lower triangle is aspatial, upper triangle is spatial
 # # try both
 # advanced.procD.lm(coords~PCNM2+PCNM1+log(Csize),  ~PCNM2+PCNM1+log(Csize)+ssp, iter=999,
-#                   groups=~ssp, slope=~(PCNM2+PCNM1+log(Csize)),data=ssp.gdf) 
+#                   groups=~ssp, slope=~(PCNM2+PCNM1+log(Csize)),data=ssp.gdf)
 # #can't add in all 3 covariates into slope. Model still valid without all 3?
+
+# # SSP: stats4size --------
+# size.c<-ssp_metadata$carapace_length %>% log
+# size.d<-ssp_metadata$dor_cs %>% log
+# size.l<-ssp_metadata$lat_cs %>% log
+# size.p<-ssp_metadata$pos_cs %>% log
+# hist(size.c) #looks normal-ish
+# shapiro.test(size.p)
+# #c & p fail, d & l pass
+#
+# #first, look at spatial distribution of size
+# usa<-map_data('state')
+# xlims<-range(ssp.space@bbox[1,])+c(-0.8,+0.8)
+# ylims<-range(ssp.space@bbox[2,])+c(-0.8,+0.8)
+# ssp.size.plot<-cbind(ssp_metadata$longitude,ssp_metadata$latitude,size.d,size.l,size.p,size.c) %>% as.data.frame
+# colnames(ssp.size.plot)<-c("longitude","latitude","dor","lat","pos","length")
+# ggplot(data=ssp.size.plot,aes(x=longitude,y=latitude))+
+#   geom_polygon(data=usa,aes(x=long,y=lat,group=group),fill=NA,color="gray") +
+#   geom_point(aes(fill=length),shape=21,size=2)+
+#   scale_fill_gradientn(colours=map_colors) +
+#   coord_cartesian(xlim=xlims,ylim=ylims)+
+#   theme_classic() +
+#   theme(axis.line=element_blank(),axis.text.x=element_blank(),
+#         axis.text.y=element_blank(),axis.ticks=element_blank(),
+#         axis.title.x=element_blank(),axis.title.y=element_blank(),
+#         legend.position=c(0.9,0.3),text=element_text(size=10),
+#         panel.background = element_rect(fill = "transparent",colour = NA), # or theme_blank()
+#         panel.grid.minor = element_blank(),
+#         panel.grid.major = element_blank(),
+#         plot.background = element_rect(fill = "transparent",colour = NA))
+#
+# summary(lm(ssp_metadata$pos_cs~sevm$vectors[,1]+sevm$vectors[,2]+sevm$vectors[,4]+ssp_metadata$ssp))
+# summary(lm(ssp_metadata$lat_cs~sevm$vectors[,1]+sevm$vectors[,2]+sevm$vectors[,4]+ssp_metadata$ssp))
+# summary(lm(ssp_metadata$dor_cs~sevm$vectors[,2]+sevm$vectors[,4]+ssp_metadata$ssp))
+# summary(lm(ssp_metadata$carapace_length~sevm$vectors[,2]+sevm$vectors[,4]+ssp_metadata$ssp))
 
 # SSP: Assignments -----
 # # # Use CVAGen8 for CVA-based assignments tests with jackknife
@@ -283,7 +327,7 @@ dev.off()
 # # SSP: bgPCA --------
 # # bin_residuals_mean<-colMeans(ssp_set)#compute grand mean
 # # bin_residuals_centered<-as.matrix(ssp_set)-rep(1,nrow(ssp_set))%*%t(bin_residuals_mean) #Subtract that grandmean from each row
-# # 
+# #
 # # #Calculate the group means
 # # bin_means<-array(NA,dim=c(length(levels(binary)),ncol(ssp_set)))
 # # for (i in 1:length(levels(binary))){
@@ -291,12 +335,12 @@ dev.off()
 # # }
 # # B<-prcomp(bin_means)$rotation #eigenvectors
 # # B2<-prcomp(bin_means)
-# # 
+# #
 # # bgPCAbin<-bin_residuals_centered%*%B #Get the scores for all the individuals on the eigenvectors of the PCA of the means
-# # 
+# #
 # # plot(bgPCAbin[,c(1,2)],cex=1.5,
 # #      bg=ssp_col[binary],pch=21,xlab="",ylab="")
-# 
+#
 # # SAMdata --------
 # #code was used to input data into SAM4.0 to check
 # #whether spatial eigenvector modelling gave same results
@@ -308,5 +352,3 @@ dev.off()
 # colnames(write2)[which(colnames(write2)=="longitude")]<-"Longitude"
 # write.csv(write2,paste("boxturtle_SAMdata_ssp_",view,".csv",sep=""),row.names=FALSE)
 # getwd()
-
-

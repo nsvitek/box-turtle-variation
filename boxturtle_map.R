@@ -79,17 +79,17 @@ localities_strat$min<-0
 localities_strat$max<-0
 localities_strat$group<-NA
 
-localities_strat[which(localities_strat$site=="friesenhahn cave"),c(3:6)]<-c("A. Friesenhahn Cave",17.8,19.6,"3 neither")
-localities_strat[which(localities_strat$site=="ingleside"),c(3:6)]<-c("B. Ingleside",120,130,"3 maybe neither")
-localities_strat[which(localities_strat$site=="haile 8a"),c(3:6)]<-c("C. Haile VIIIA",9.5,160,"3 neither")
-localities_strat[which(localities_strat$site=="devils den"),c(3:6)]<-c("D. Devil's Den",9.5,12.7,"2 maybe peninsular")
-localities_strat[which(localities_strat$site=="grove's orange midden"),c(3:6)]<-c("E. Grove's Orange Midden",3.8,6.2,"2 peninsular")
-localities_strat[which(localities_strat$site=="reddick 1b"),c(3:6)]<-c("F. Reddick IB",9.5,160,"3 neither")
-localities_strat[which(localities_strat$site=="fort center"),c(3:6)]<-c("G. Fort Center",0.45,2.8,"2 peninsular")
-localities_strat[which(localities_strat$site=="melbourne"),c(3:6)]<-c("H. Melbourne",9.5,12.7,"1 maybe mainland")
-localities_strat[which(localities_strat$site=="camelot"),c(3:6)]<-c("J. Camelot",160,600,"1 not mainland")
-localities_strat[which(localities_strat$site=="ardis"),c(3:6)]<-c("K. Ardis",18.5,22,"3 maybe neither")
-localities_strat[which(localities_strat$site=="vero"),c(3:6)]<-c("I. Vero",9.5,12.7,"2 maybe peninsular")
+localities_strat[which(localities_strat$site=="friesenhahn cave"),c(3:6)]<-c("A. Friesenhahn Cave",17.8,19.6,"3")
+localities_strat[which(localities_strat$site=="ingleside"),c(3:6)]<-c("B. Ingleside",120,130,"2")
+localities_strat[which(localities_strat$site=="haile 8a"),c(3:6)]<-c("C. Haile VIIIA",9.5,160,"3")
+localities_strat[which(localities_strat$site=="devils den"),c(3:6)]<-c("D. Devil's Den",9.5,12.7,"2")
+localities_strat[which(localities_strat$site=="grove's orange midden"),c(3:6)]<-c("E. Grove's Orange Midden",3.8,6.2,"1")
+localities_strat[which(localities_strat$site=="reddick 1b"),c(3:6)]<-c("F. Reddick IB",9.5,160,"3")
+localities_strat[which(localities_strat$site=="fort center"),c(3:6)]<-c("G. Fort Center",0.45,2.8,"1")
+localities_strat[which(localities_strat$site=="melbourne"),c(3:6)]<-c("H. Melbourne",9.5,12.7,"2")
+localities_strat[which(localities_strat$site=="camelot"),c(3:6)]<-c("J. Camelot",160,600,"2")
+localities_strat[which(localities_strat$site=="ardis"),c(3:6)]<-c("K. Ardis",18.5,22,"2")
+localities_strat[which(localities_strat$site=="vero"),c(3:6)]<-c("I. Vero",9.5,12.7,"2")
 
 localities_strat$min<-as.numeric(localities_strat$min)
 localities_strat$max<-as.numeric(localities_strat$max)
@@ -105,6 +105,6 @@ ggplot(data=localities_strat,aes(x=site,y=min,color=group))+
   theme(text=element_text(size=10),
         axis.text.x=element_text(angle=-45,hjust=1,color="black")) +
   scale_x_discrete(position = "top") +
-  scale_color_manual(values= fos_col,guide=FALSE)
+  scale_color_manual(values= c("#FED98E","#EC7014","#8C2D04"),guide=FALSE) #"#FB9A29"
 dev.off()
 embed_fonts("strat.pdf")
