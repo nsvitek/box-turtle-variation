@@ -55,6 +55,11 @@ k<-2 #number of dimensions
 ssp_sd_id<-read.csv("ssp_sd_id.csv",header=TRUE) #sex assessments
 opar<-par
 
+# Set View --------------------------------------------------------------
+viewoptions<-c("dor","lat","pos")
+view<-viewoptions[1]
+source(paste(scriptsdir,"box-turtle-variation/boxturtle_settings.R",sep="/"))
+
 # Colors ----------------------------------------------------------------
 # spp_col<-wes_palette("Moonrise2")
 fos_col<-c(brewer.pal(12,"Paired"),"white")
@@ -71,11 +76,6 @@ for (x in seq(0,1,length.out=nrow(ssp_metadata))){
 }
 map_colors<-map_gradient %>% rgb(.)
 
-# Set View --------------------------------------------------------------
-viewoptions<-c("dor","lat","pos")
-view<-viewoptions[1]
-source(paste(scriptsdir,"box-turtle-variation/boxturtle_settings.R",sep="/"))
-
 # Error -------------------------------------------------------------------
 # ##### Evaluate human digitization error
 # freeze<-ls() #snapshot of current environment
@@ -91,7 +91,7 @@ source(paste(scriptsdir,"box-turtle-variation/boxturtle_settings.R",sep="/"))
 # rm(list = c(setdiff(ls(),freeze),"data_all")) #clean up environment
 
 # Sexual Dimorphism -----
-source(paste(scriptsdir,"box-turtle-variation/boxturtle_asd.R",sep="/"))
+source(paste(scriptsdir,"box-turtle-variation/boxturtle_dimorphism.R",sep="/"))
 print("Dimorphism code sourced.")
 
 # Subspecies and Geography ------

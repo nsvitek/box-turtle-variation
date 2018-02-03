@@ -74,7 +74,7 @@ locality_dist<-distm(ssp.space@coords,fun=distVincentyEllipsoid) #output in mete
 
 # PCNM axes of the distance matrix
 sevm<-pcnm(locality_dist)
-#note that eigenvalues in sevm.test1 don't match SAM-based eigenvalues
+#note that eigenvalues in sevm don't match SAM-based eigenvalues
 #also, see Dray's note about negative eigenvalues. 
 
 # # Can you re-create results from SAM? -------
@@ -88,11 +88,16 @@ sevm<-pcnm(locality_dist)
 #             R2more = 0.001, alpha = 0.05, Xscale = TRUE, Ycenter = TRUE, Yscale
 #             = FALSE)
 
+
 #try selecting only the top 3 variables. Keep the model simple
 fs<-forward.sel(PCAssp$x[,c(1:PCc)], sevm$vectors, 3, R2thresh = 0.99, adjR2thresh = 0.99,nperm = 999,
                 R2more = 0.001, alpha = 0.05, Xscale = TRUE, Ycenter = TRUE, Yscale
                 = FALSE)
 fs$variables
+
+sevm$values
+explain<-sevm$values/sum(sevm$values) 
+round(explain[1:3],digits=3)*100
 
 # # Visualize Filter Maps-------
 # usa<-map_data('state')
