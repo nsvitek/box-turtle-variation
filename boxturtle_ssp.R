@@ -73,7 +73,7 @@ coordinates(ssp.space)<-c("longitude","latitude")
 locality_dist<-distm(ssp.space@coords,fun=distVincentyEllipsoid) #output in meters
 
 # PCNM axes of the distance matrix
-sevm<-pcnm(locality_dist)
+sevm<-pcnm(locality_dists)
 #note that eigenvalues in sevm don't match SAM-based eigenvalues
 #also, see Dray's note about negative eigenvalues. 
 
@@ -95,9 +95,11 @@ fs<-forward.sel(PCAssp$x[,c(1:PCc)], sevm$vectors, 3, R2thresh = 0.99, adjR2thre
                 = FALSE)
 fs$variables
 
-sevm$values
-explain<-sevm$values/sum(sevm$values) 
-round(explain[1:3],digits=3)*100
+# sevm$values
+# explain<-sevm$values/sum(sevm$values) 
+# round(explain[1:3],digits=3)*100 #not sure this is legit with negative eigenvalues and truncated matrix
+
+
 
 # # Visualize Filter Maps-------
 # usa<-map_data('state')

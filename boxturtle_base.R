@@ -1,8 +1,8 @@
 # Base script to pull together geometric morphometric analyses of cf. Terrapene carolina
 
 scriptsdir <- "C://cygwin/home/N.S/scripts"
-# datadir <- "D:/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
-datadir <- "C:/Users/N.S/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
+datadir <- "D:/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
+# datadir <- "C:/Users/N.S/Dropbox/Documents/research/turtles/Thesis/Vitek_YR_PublishTerrapene/data"
 
 # Load Dependencies ------------------------------------------------------------------
 # load library dependencies
@@ -57,7 +57,7 @@ opar<-par
 
 # Set View --------------------------------------------------------------
 viewoptions<-c("dor","lat","pos")
-view<-viewoptions[1]
+view<-viewoptions[3]
 source(paste(scriptsdir,"box-turtle-variation/boxturtle_settings.R",sep="/"))
 
 # Colors ----------------------------------------------------------------
@@ -91,14 +91,14 @@ map_colors<-map_gradient %>% rgb(.)
 # rm(list = c(setdiff(ls(),freeze),"data_all")) #clean up environment
 
 # Sexual Dimorphism -----
-source(paste(scriptsdir,"box-turtle-variation/boxturtle_dimorphism.R",sep="/"))
-print("Dimorphism code sourced.")
+# source(paste(scriptsdir,"box-turtle-variation/boxturtle_dimorphism.R",sep="/"))
+# print("Dimorphism code sourced.")
 
 # Subspecies and Geography ------
 #run through first set of ssp analyses for each view.
-
-source(paste(scriptsdir,"box-turtle-variation/boxturtle_ssp.R",sep="/"))
-print("Subspecies code sourced.")
+# 
+# source(paste(scriptsdir,"box-turtle-variation/boxturtle_ssp.R",sep="/"))
+# print("Subspecies code sourced.")
 
 # F+SSP: make ------
 fssp_set<-rbind(ssp_set,fos_set)
@@ -220,8 +220,12 @@ write.csv(Pman.fossil.adjust,paste("fssp_pman_bysite_",view,".csv",sep=""))
 
 # F+SSP: disparity ------
 disp_total<-individual.disparity(PCAfssp.allo$x[,c(1:PCc)]) #all non-zero PCs
+disp_total<-individual.disparity(PCAfssp.allo$x[,]) #all PCs
 
 observed<-PCAfssp.allo$x[which(fssp_metadata$ssp_set=="yes"),c(1:PCc)] %>% individual.disparity() 
+observed<-PCAfssp.allo$x[which(fssp_metadata$ssp_set=="yes"),] %>% 
+  individual.disparity() 
+
 replicates<-1000 #eventually, put at 10000?
 
 # now, essentially, rarefaction for disparity: is the ssp dataset size large enough to capture standing disparity?
@@ -234,7 +238,8 @@ for(N in 1:length(sampleN)){
   distribution<-NULL #create holder for null resampled distribution
   for (i in 1:replicates) {						# start for-loop
     rm1<- sample(c(1:nrow(ssp_set)),size=sampleN[N], replace=TRUE) %>% #resample ssp specimens with replacement
-      PCAfssp.allo$x[which(fssp_metadata$ssp_set=="yes"),c(1:PCc)][.,] %>% #take PC scores of resamples
+      # PCAfssp.allo$x[which(fssp_metadata$ssp_set=="yes"),c(1:PCc)][.,] %>% #take PC scores of resamples
+      PCAfssp.allo$x[which(fssp_metadata$ssp_set=="yes"),][.,] %>% #take PC scores of resamples
       individual.disparity  # calculate disparity for resamples
     distribution<- rbind(distribution,rm1)					# store all resampled disparities
   }									# end for-loop
@@ -251,29 +256,13 @@ colnames(fos_disparity)<-c("d","n")
 
 for(i in 1:length(levels(fos_metadata$site2))){
   select_disp<-which(fssp_metadata$site2=="modern"|fssp_metadata$site2==levels(fos_metadata$site2)[i])
-  fos_disparity$d[i]<-individual.disparity(PCAfssp.allo$x[select_disp,c(1:PCc)]) #all non-zero PCs
-  fos_disparity$n[i]<-length(which(fssp_metadata$site2==levels(fos_metadata$site2)[i]))+nrow(ssp_set)
+  # fos_disparity$d[i]<-individual.disparity(PCAfssp.allo$x[select_disp,c(1:PCc)]) #all non-zero PCs
+  fos_disparity$d[i]<-individual.disparity(PCAfssp.allo$x[select_disp,]) #all  PCs
+    fos_disparity$n[i]<-length(which(fssp_metadata$site2==levels(fos_metadata$site2)[i]))+nrow(ssp_set)
 }
 
 # # put it all together in a plot
-# cairo_pdf(paste(view,"_disparity.pdf",sep=""),width = 5.4, height = 2,family ="Arial")
-# par(mar=c(3,3.3,.5,.5))
-# plot(sampleN,rare_disparity$mean,ylim=c(min(rare_disparity$lo),max(rare_disparity$hi)),
-#      xlim=c(min(sampleN),nrow(fssp_set)),xlab="",ylab="") #wasted space, mess with limits
-# polygon(c(sampleN,rev(sampleN)), 
-#         c(rare_disparity$lo,rev(rare_disparity$hi)),
-#         col=adjustcolor("gray",alpha=0.2), border = NA)
-# lines(sampleN,rare_disparity$mean,lwd=1,lty=1)	
-# points(sampleN,rare_disparity$mean,pch=21,bg="black",cex=1)
-# points(fos_disparity$n,fos_disparity$d,pch=21,bg=fos_col)
-# # legend('bottomleft',cex=.8,pch=c(21),pt.bg=fos_col,legend=levels(fos_metadata$site2),pt.cex=2)
-# points(nrow(fssp_set),disp_total)
-# mtext("Sample Size",side=1,line=2,cex=1)
-# mtext("Disparity",side=2,line=2,cex=1)
-# dev.off()
-# embed_fonts(paste(view,"_disparity.pdf",sep=""))
-
-cairo_pdf(paste("disparity_",view,".pdf",sep=""),width = 5.4, height = 2,family ="Arial")
+cairo_pdf(paste("disparity_allPC_",view,".pdf",sep=""),width = 5.4, height = 2,family ="Arial")
 par(mar=c(3,3.3,.5,.5))
 plot(sampleN,rare_disparity$mean,ylim=c(mean(rare_disparity$mean),disp_total+0.0002),
      xlim=c(100,nrow(fssp_set)),xlab="",ylab="") #wasted space, mess with limits
@@ -288,7 +277,7 @@ points(nrow(fssp_set),disp_total,pch=22,bg="black")
 mtext("Sample Size",side=1,line=2,cex=1)
 mtext("Disparity",side=2,line=2,cex=1)
 dev.off()
-embed_fonts(paste("disparity_",view,".pdf",sep=""))
+embed_fonts(paste("disparity_allPC_",view,".pdf",sep=""))
 
 cairo_pdf("disparity_legend.pdf",width = 5.4, height = 7,family ="Arial")
 plot(sampleN,rare_disparity$mean,type="n") #wasted space, mess with limits
